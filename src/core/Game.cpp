@@ -100,23 +100,75 @@ void Game::run() {
 }
 
 void Game::handleInput() {
-    // Escape or quit handled in Input/Game loop
+    // Tool hotbar selection keys [1], [2], [3]
+    if (m_input.isKeyPressed(SDL_SCANCODE_1)) {
+        m_inventory.activeTool = ToolType::Hoe;
+        std::cout << "[Tool Selected] Hoe" << std::endl;
+    } else if (m_input.isKeyPressed(SDL_SCANCODE_2)) {
+        m_inventory.activeTool = ToolType::WateringCan;
+        std::cout << "[Tool Selected] Watering Can" << std::endl;
+    } else if (m_input.isKeyPressed(SDL_SCANCODE_3)) {
+        m_inventory.activeTool = ToolType::TomatoSeeds;
+        std::cout << "[Tool Selected] Tomato Seeds (Stock: " << m_inventory.tomatoSeeds << ")" << std::endl;
+    }
+
+    // Use active tool on the targeted tile (Space, E, or Return)
+    if (m_input.isKeyPressed(SDL_SCANCODE_SPACE) ||
+        m_input.isKeyPressed(SDL_SCANCODE_E) ||
+        m_input.isKeyPressed(SDL_SCANCODE_RETURN)) {
+        auto [tx, ty] = m_player.getTargetTile();
+        m_farmSystem.interact(tx, ty, m_map, m_inventory);
+    }
 }
 
 void Game::update(float dt) {
     m_player.update(dt, m_input, m_map);
+    m_farmSystem.update(dt, m_map);
+
+    // In smoke test mode, simulate farming sequence to verify functionality automatically
+    if (m_smokeTestMode) {
+        auto [tx, ty] = m_player.getTargetTile();
+        if (m_smokeTestFrames == 10) {
+            // Till soil
+            m_inventory.activeTool = ToolType::Hoe;
+            m_farmSystem.interact(tx, ty, m_map, m_inventory);
+        } else if (m_smokeTestFrames == 20) {
+            // Water soil
+            m_inventory.activeTool = ToolType::WateringCan;
+            m_farmSystem.interact(tx, ty, m_map, m_inventory);
+        } else if (m_smokeTestFrames == 30) {
+            // Plant tomato seed
+            m_inventory.activeTool = ToolType::TomatoSeeds;
+            m_farmSystem.interact(tx, ty, m_map, m_inventory);
+        } else if (m_smokeTestFrames >= 31 && m_smokeTestFrames <= 100) {
+            // Simulate time passage so tomato reaches mature Harvest stage
+            m_farmSystem.update(1.0f, m_map);
+        } else if (m_smokeTestFrames == 105) {
+            // Harvest mature tomato
+            m_farmSystem.interact(tx, ty, m_map, m_inventory);
+            if (m_inventory.harvestedTomatoes > 0) {
+                std::cout << "[Smoke Test] Farming loop verified: tilled -> watered -> planted -> matured -> harvested!" << std::endl;
+            }
+        }
+    }
 }
 
 void Game::render() {
     // Clear screen with a neutral dark tone
     m_renderer.clear(SDL_Color{20, 20, 20, 255});
 
-    // 1. Render map
+    // 1. Render terrain tile map
     m_map.render(m_renderer);
 
-    // 2. Render player
+    // 2. Render planted crops
+    m_farmSystem.render(m_renderer);
+
+    // 3. Render farmer player
     m_player.render(m_renderer);
 
-    // Present buffer
+    // 4. Render HUD (hotbar, seed count, harvested crop counter)
+    m_hud.render(m_renderer, m_inventory);
+
+    // Present final frame buffer
     m_renderer.present();
 }

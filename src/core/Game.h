@@ -7,6 +7,9 @@
 #include "core/AssetManager.h"
 #include "world/Map.h"
 #include "entities/Player.h"
+#include "entities/Inventory.h"
+#include "systems/FarmSystem.h"
+#include "ui/HUD.h"
 
 // Top-level application class orchestrating game setup, fixed-timestep loop, and teardown.
 class Game {
@@ -24,6 +27,7 @@ public:
     void cleanUp();
 
     bool isRunning() const { return m_isRunning; }
+    const Inventory& getInventory() const { return m_inventory; }
 
 private:
     void handleInput();
@@ -38,6 +42,9 @@ private:
 
     Map m_map;
     Player m_player;
+    Inventory m_inventory;
+    FarmSystem m_farmSystem;
+    HUD m_hud;
 
     bool m_isRunning = false;
     bool m_smokeTestMode = false;
