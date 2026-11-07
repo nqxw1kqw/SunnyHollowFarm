@@ -1,5 +1,6 @@
 #include "core/Game.h"
 #include <iostream>
+#include <cassert>
 
 Game::~Game() {
     cleanUp();
@@ -100,6 +101,18 @@ void Game::run() {
 }
 
 void Game::handleInput() {
+    // Inventory toggle key (Tab or I)
+    if (m_input.isKeyPressed(SDL_SCANCODE_TAB) || m_input.isKeyPressed(SDL_SCANCODE_I)) {
+        m_inventoryUI.toggle();
+        std::cout << "[UI] Inventory modal " << (m_inventoryUI.isOpen() ? "OPENED" : "CLOSED") << std::endl;
+    }
+
+    // When the inventory grid is open, pass input to the modal and pause world interaction
+    if (m_inventoryUI.isOpen()) {
+        m_inventoryUI.handleInput(m_input, m_inventory);
+        return;
+    }
+
     // Tool hotbar selection keys [1], [2], [3]
     if (m_input.isKeyPressed(SDL_SCANCODE_1)) {
         m_inventory.activeTool = ToolType::Hoe;
@@ -109,7 +122,8 @@ void Game::handleInput() {
         std::cout << "[Tool Selected] Watering Can" << std::endl;
     } else if (m_input.isKeyPressed(SDL_SCANCODE_3)) {
         m_inventory.activeTool = ToolType::TomatoSeeds;
-        std::cout << "[Tool Selected] Tomato Seeds (Stock: " << m_inventory.tomatoSeeds << ")" << std::endl;
+        std::cout << "[Tool Selected] Tomato Seeds (Stock: "
+                  << m_inventory.getItemCount(ItemType::TomatoSeeds) << ")" << std::endl;
     }
 
     // Use active tool on the targeted tile (Space, E, or Return)
@@ -117,38 +131,96 @@ void Game::handleInput() {
         m_input.isKeyPressed(SDL_SCANCODE_E) ||
         m_input.isKeyPressed(SDL_SCANCODE_RETURN)) {
         auto [tx, ty] = m_player.getTargetTile();
-        m_farmSystem.interact(tx, ty, m_map, m_inventory);
+        m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud);
     }
 }
 
 void Game::update(float dt) {
-    m_player.update(dt, m_input, m_map);
+    // Update on-screen feedback timer
+    m_hud.update(dt);
+
+    // Player movements and world physics only progress if inventory modal is closed
+    if (!m_inventoryUI.isOpen()) {
+        m_player.update(dt, m_input, m_map);
+    }
     m_farmSystem.update(dt, m_map);
 
-    // In smoke test mode, simulate farming sequence to verify functionality automatically
+    // Headless smoke test verification sequence
     if (m_smokeTestMode) {
         auto [tx, ty] = m_player.getTargetTile();
+
         if (m_smokeTestFrames == 10) {
+            // Verify initial state
+            assert(m_player.getEnergy() == Config::INITIAL_ENERGY);
+            assert(m_inventory.getMoney() == Config::INITIAL_MONEY);
+            assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == Config::INITIAL_TOMATO_SEEDS);
+            assert(m_inventory.getItemCount(ItemType::Tomato) == 0);
+
             // Till soil
             m_inventory.activeTool = ToolType::Hoe;
-            m_farmSystem.interact(tx, ty, m_map, m_inventory);
+            bool ok = m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud);
+            assert(ok && "Tilling should succeed");
+            assert(m_player.getEnergy() == Config::INITIAL_ENERGY - Config::ENERGY_COST_TILL);
+            std::cout << "[Smoke Test] Tilled: energy decreased to " << m_player.getEnergy() << std::endl;
         } else if (m_smokeTestFrames == 20) {
             // Water soil
+            int energyBefore = m_player.getEnergy();
             m_inventory.activeTool = ToolType::WateringCan;
-            m_farmSystem.interact(tx, ty, m_map, m_inventory);
+            bool ok = m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud);
+            assert(ok && "Watering should succeed");
+            assert(m_player.getEnergy() == energyBefore - Config::ENERGY_COST_WATER);
+            std::cout << "[Smoke Test] Watered: energy decreased to " << m_player.getEnergy() << std::endl;
         } else if (m_smokeTestFrames == 30) {
             // Plant tomato seed
+            int energyBefore = m_player.getEnergy();
+            int seedsBefore = m_inventory.getItemCount(ItemType::TomatoSeeds);
             m_inventory.activeTool = ToolType::TomatoSeeds;
-            m_farmSystem.interact(tx, ty, m_map, m_inventory);
+            bool ok = m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud);
+            assert(ok && "Planting should succeed");
+            assert(m_player.getEnergy() == energyBefore - Config::ENERGY_COST_PLANT);
+            assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == seedsBefore - 1);
+            std::cout << "[Smoke Test] Planted: seeds decreased from " << seedsBefore
+                      << " to " << m_inventory.getItemCount(ItemType::TomatoSeeds)
+                      << ", energy to " << m_player.getEnergy() << std::endl;
         } else if (m_smokeTestFrames >= 31 && m_smokeTestFrames <= 100) {
-            // Simulate time passage so tomato reaches mature Harvest stage
+            // Accelerate time to grow crop to maturity
             m_farmSystem.update(1.0f, m_map);
         } else if (m_smokeTestFrames == 105) {
             // Harvest mature tomato
-            m_farmSystem.interact(tx, ty, m_map, m_inventory);
-            if (m_inventory.harvestedTomatoes > 0) {
-                std::cout << "[Smoke Test] Farming loop verified: tilled -> watered -> planted -> matured -> harvested!" << std::endl;
-            }
+            int energyBefore = m_player.getEnergy();
+            int tomatoesBefore = m_inventory.getItemCount(ItemType::Tomato);
+            bool ok = m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud);
+            assert(ok && "Harvesting mature crop should succeed");
+            assert(m_player.getEnergy() == energyBefore - Config::ENERGY_COST_HARVEST);
+            assert(m_inventory.getItemCount(ItemType::Tomato) == tomatoesBefore + 1);
+            std::cout << "[Smoke Test] Harvested: tomatoes increased from " << tomatoesBefore
+                      << " to " << m_inventory.getItemCount(ItemType::Tomato)
+                      << ", energy to " << m_player.getEnergy() << std::endl;
+            std::cout << "[Smoke Test] Farming loop verified: tilled -> watered -> planted -> matured -> harvested!" << std::endl;
+        } else if (m_smokeTestFrames == 110) {
+            // Verify action refusal when energy is insufficient
+            m_player.setEnergy(1); // Set energy below any action cost (cost is 5 for till)
+            int energyBefore = m_player.getEnergy();
+            m_inventory.activeTool = ToolType::Hoe;
+            // Attempt to till adjacent tile (tx + 1, ty)
+            bool ok = m_farmSystem.interact(tx + 1, ty, m_map, m_inventory, m_player, &m_hud);
+            assert(!ok && "Action must be refused when energy is too low");
+            assert(m_player.getEnergy() == energyBefore && "Energy must not change or go negative when refused");
+            assert(m_hud.hasActiveFeedback() && "On-screen feedback must be active when energy refused");
+            assert(m_map.getTile(tx + 1, ty).getType() != TileType::TilledSoil && "Tile must remain untilled");
+            std::cout << "[Smoke Test] Energy exhaustion verified: action refused, energy remained "
+                      << m_player.getEnergy() << " (never negative), feedback banner triggered!" << std::endl;
+
+            // Restore energy
+            m_player.setEnergy(Config::INITIAL_ENERGY);
+        } else if (m_smokeTestFrames == 115) {
+            // Verify inventory UI toggle
+            assert(!m_inventoryUI.isOpen());
+            m_inventoryUI.toggle();
+            assert(m_inventoryUI.isOpen() && "Inventory UI should be open after toggle");
+            m_inventoryUI.toggle();
+            assert(!m_inventoryUI.isOpen() && "Inventory UI should be closed after second toggle");
+            std::cout << "[Smoke Test] Inventory UI toggle verified!" << std::endl;
         }
     }
 }
@@ -166,8 +238,13 @@ void Game::render() {
     // 3. Render farmer player
     m_player.render(m_renderer);
 
-    // 4. Render HUD (hotbar, seed count, harvested crop counter)
-    m_hud.render(m_renderer, m_inventory);
+    // 4. Render HUD (hotbar, money counter, energy bar, inventory hint, tomato counter, feedback banner)
+    m_hud.render(m_renderer, m_inventory, m_player);
+
+    // 5. Render Inventory Grid modal when open
+    if (m_inventoryUI.isOpen()) {
+        m_inventoryUI.render(m_renderer, m_inventory);
+    }
 
     // Present final frame buffer
     m_renderer.present();

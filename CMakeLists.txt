@@ -20,8 +20,12 @@ set(SOURCES
     src/world/Map.cpp
     src/entities/Player.cpp
     src/entities/Crop.cpp
+    src/entities/Item.cpp
+    src/entities/Inventory.cpp
     src/systems/FarmSystem.cpp
+    src/ui/BitmapFont.cpp
     src/ui/HUD.cpp
+    src/ui/InventoryUI.cpp
 )
 
 add_executable(sunny_hollow_farm ${SOURCES})

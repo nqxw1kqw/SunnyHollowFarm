@@ -2,16 +2,34 @@
 
 #include "core/Renderer.h"
 #include "entities/Inventory.h"
+#include "entities/Player.h"
+#include <string>
 
-// Heads-Up Display showing the active tool hotbar, seed count, and harvested produce.
+// Heads-Up Display showing the active tool hotbar, money wallet, energy bar,
+// inventory toggle hint, harvested produce counter, and feedback banners.
 class HUD {
 public:
     HUD() = default;
 
-    // Renders the hotbar and inventory counters at the top of the screen.
-    void render(Renderer& renderer, const Inventory& inventory) const;
+    // Updates feedback notification timers.
+    void update(float dt);
+
+    // Displays an on-screen warning or notification banner.
+    void showFeedback(const std::string& message, float duration = 2.0f);
+
+    // Renders all HUD components.
+    void render(Renderer& renderer, const Inventory& inventory, const Player& player) const;
+
+    // Checks if a feedback banner is currently visible.
+    bool hasActiveFeedback() const { return m_feedbackTimer > 0.0f; }
+    const std::string& getActiveFeedback() const { return m_feedbackMessage; }
 
 private:
     void drawToolIcon(Renderer& renderer, ToolType type, int x, int y) const;
-    void drawNumber(Renderer& renderer, int number, int x, int y, SDL_Color color) const;
+    void drawCoinIcon(Renderer& renderer, int x, int y) const;
+    void drawEnergyIcon(Renderer& renderer, int x, int y) const;
+
+    std::string m_feedbackMessage;
+    float m_feedbackTimer = 0.0f;
+    float m_feedbackDuration = 2.0f;
 };

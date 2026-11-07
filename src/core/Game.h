@@ -10,6 +10,7 @@
 #include "entities/Inventory.h"
 #include "systems/FarmSystem.h"
 #include "ui/HUD.h"
+#include "ui/InventoryUI.h"
 
 // Top-level application class orchestrating game setup, fixed-timestep loop, and teardown.
 class Game {
@@ -28,6 +29,13 @@ public:
 
     bool isRunning() const { return m_isRunning; }
     const Inventory& getInventory() const { return m_inventory; }
+    Inventory& getInventory() { return m_inventory; }
+    const Player& getPlayer() const { return m_player; }
+    Player& getPlayer() { return m_player; }
+    const HUD& getHUD() const { return m_hud; }
+    HUD& getHUD() { return m_hud; }
+    const InventoryUI& getInventoryUI() const { return m_inventoryUI; }
+    InventoryUI& getInventoryUI() { return m_inventoryUI; }
 
 private:
     void handleInput();
@@ -45,6 +53,7 @@ private:
     Inventory m_inventory;
     FarmSystem m_farmSystem;
     HUD m_hud;
+    InventoryUI m_inventoryUI;
 
     bool m_isRunning = false;
     bool m_smokeTestMode = false;
