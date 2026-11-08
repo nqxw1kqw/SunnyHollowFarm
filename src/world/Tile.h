@@ -17,7 +17,12 @@ public:
                m_type != TileType::Fence &&
                m_type != TileType::Farmhouse &&
                m_type != TileType::Stove &&
-               m_type != TileType::ShopStall;
+               m_type != TileType::ShopStall &&
+               m_type != TileType::Wall &&
+               m_type != TileType::Bed &&
+               m_type != TileType::Chest &&
+               m_type != TileType::Bookshelf &&
+               m_type != TileType::Void;
     }
 
     // Dirt or grass can be tilled using a hoe.

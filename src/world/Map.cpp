@@ -44,6 +44,8 @@ void Map::initDefault() {
             m_tiles[getIndex(x, y)] = Tile(TileType::Farmhouse);
         }
     }
+    // Farmhouse entrance door at (2, 2) is enterable by stepping on it
+    m_tiles[getIndex(2, 2)] = Tile(TileType::FarmhouseDoor);
 
     // 6. Kitchen Stove interaction point at (4, 2) on the farmhouse patio
     m_tiles[getIndex(4, 2)] = Tile(TileType::Stove);
@@ -52,6 +54,53 @@ void Map::initDefault() {
     for (int x = 13; x <= 18; ++x) {
         m_tiles[getIndex(x, 1)] = Tile(TileType::ShopStall);
     }
+}
+
+void Map::initInterior() {
+    // 1. Fill entire map with Void (dark backdrop)
+    for (int y = 0; y < HEIGHT; ++y) {
+        for (int x = 0; x < WIDTH; ++x) {
+            m_tiles[getIndex(x, y)] = Tile(TileType::Void);
+        }
+    }
+
+    // 2. Room interior dimensions: x=5..14 (10 wide), y=3..10 (8 tall)
+    // Wood plank floor
+    for (int y = 4; y <= 9; ++y) {
+        for (int x = 6; x <= 13; ++x) {
+            m_tiles[getIndex(x, y)] = Tile(TileType::WoodFloor);
+        }
+    }
+
+    // Top wall
+    for (int x = 5; x <= 14; ++x) {
+        m_tiles[getIndex(x, 3)] = Tile(TileType::Wall);
+    }
+    // Left and Right walls
+    for (int y = 3; y <= 10; ++y) {
+        m_tiles[getIndex(5, y)] = Tile(TileType::Wall);
+        m_tiles[getIndex(14, y)] = Tile(TileType::Wall);
+    }
+    // Bottom wall
+    for (int x = 5; x <= 14; ++x) {
+        m_tiles[getIndex(x, 10)] = Tile(TileType::Wall);
+    }
+
+    // Exit threshold doorway at (9, 10)
+    m_tiles[getIndex(9, 10)] = Tile(TileType::InteriorExit);
+
+    // Props:
+    // Bed at (6, 4)
+    m_tiles[getIndex(6, 4)] = Tile(TileType::Bed);
+
+    // Storage Chest at (8, 4)
+    m_tiles[getIndex(8, 4)] = Tile(TileType::Chest);
+
+    // Indoor kitchen stove at (11, 4)
+    m_tiles[getIndex(11, 4)] = Tile(TileType::Stove);
+
+    // Bookshelf / study at (13, 5)
+    m_tiles[getIndex(13, 5)] = Tile(TileType::Bookshelf);
 }
 
 bool Map::inBounds(int tileX, int tileY) const {
@@ -113,6 +162,7 @@ void Map::render(Renderer& renderer) const {
                 case TileType::WateredSoil: sprite = "tile_tilled_watered.png"; break;
                 case TileType::Fence: sprite = "tiles_fence.png"; break;
                 case TileType::Farmhouse:
+                case TileType::FarmhouseDoor:
                     sprite = "building_farmhouse.png";
                     source = {(tx - 1) * 32, (ty - 1) * 32, 32, 32};
                     break;
@@ -122,13 +172,18 @@ void Map::render(Renderer& renderer) const {
                     break;
                 case TileType::Stove: sprite = "building_stove.png"; source.h = 64; break;
                 case TileType::Grass: source.y = 32; break;
+                default: sprite = nullptr; break;
             }
             if (tile.getType() == TileType::Fence || tile.getType() == TileType::Farmhouse ||
-                tile.getType() == TileType::ShopStall || tile.getType() == TileType::Stove) {
+                tile.getType() == TileType::FarmhouseDoor || tile.getType() == TileType::ShopStall ||
+                (tile.getType() == TileType::Stove && ty == 2)) {
                 const SDL_Rect grass{0, 32, 32, 32};
                 renderer.drawSprite("tiles_ground.png", px, py, 32, 32, &grass);
             }
-            if (renderer.drawSprite(sprite, px, py + 32 - source.h, 32, source.h, &source)) continue;
+            if (tile.getType() == TileType::Stove && ty != 2) {
+                renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{188, 138, 86, 255});
+            }
+            if (sprite && renderer.drawSprite(sprite, px, py + 32 - source.h, 32, source.h, &source)) continue;
 
             switch (tile.getType()) {
                 case TileType::Grass: {
@@ -271,6 +326,74 @@ void Map::render(Renderer& renderer) const {
                         SDL_Color fringeCol = (f % 2 == 0) ? primaryColor : stripeColor;
                         renderer.drawRect(px + f * 8, py + 14, 8, 3, fringeCol);
                     }
+                    break;
+                }
+                case TileType::FarmhouseDoor: {
+                    // Lower wall tier with entrance door
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{165, 110, 60, 255});
+                    renderer.drawOutline(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{110, 65, 35, 255});
+                    renderer.drawRect(px + 8, py + 6, 16, 26, SDL_Color{95, 50, 25, 255});
+                    renderer.drawOutline(px + 8, py + 6, 16, 26, SDL_Color{65, 30, 15, 255});
+                    renderer.drawRect(px + 20, py + 18, 3, 3, SDL_Color{245, 210, 50, 255}); // brass knob
+                    break;
+                }
+                case TileType::Void: {
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{16, 12, 14, 255});
+                    break;
+                }
+                case TileType::WoodFloor: {
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{188, 138, 86, 255});
+                    renderer.drawLine(px, py + 10, px + TILE_SIZE, py + 10, SDL_Color{150, 105, 60, 255});
+                    renderer.drawLine(px, py + 21, px + TILE_SIZE, py + 21, SDL_Color{150, 105, 60, 255});
+                    renderer.drawLine(px + 16, py, px + 16, py + 10, SDL_Color{150, 105, 60, 255});
+                    break;
+                }
+                case TileType::Wall: {
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{105, 65, 38, 255});
+                    renderer.drawRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, SDL_Color{125, 78, 46, 255});
+                    renderer.drawOutline(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{70, 42, 22, 255});
+                    renderer.drawLine(px, py + 16, px + TILE_SIZE, py + 16, SDL_Color{85, 52, 28, 255});
+                    break;
+                }
+                case TileType::Bed: {
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{188, 138, 86, 255});
+                    renderer.drawRect(px + 3, py + 4, 26, 26, SDL_Color{115, 65, 32, 255});
+                    renderer.drawRect(px + 5, py + 11, 22, 17, SDL_Color{185, 48, 42, 255});
+                    renderer.drawRect(px + 5, py + 17, 22, 4, SDL_Color{220, 75, 65, 255});
+                    renderer.drawRect(px + 7, py + 5, 18, 6, SDL_Color{248, 242, 230, 255});
+                    renderer.drawOutline(px + 7, py + 5, 18, 6, SDL_Color{195, 185, 170, 255});
+                    break;
+                }
+                case TileType::Chest: {
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{188, 138, 86, 255});
+                    renderer.drawRect(px + 4, py + 8, 24, 20, SDL_Color{138, 82, 40, 255});
+                    renderer.drawRect(px + 8, py + 8, 3, 20, SDL_Color{65, 65, 75, 255});
+                    renderer.drawRect(px + 21, py + 8, 3, 20, SDL_Color{65, 65, 75, 255});
+                    renderer.drawLine(px + 4, py + 15, px + 28, py + 15, SDL_Color{55, 32, 16, 255});
+                    renderer.drawRect(px + 14, py + 14, 4, 5, SDL_Color{245, 210, 50, 255});
+                    break;
+                }
+                case TileType::Bookshelf: {
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{188, 138, 86, 255});
+                    renderer.drawRect(px + 3, py + 2, 26, 28, SDL_Color{95, 55, 28, 255});
+                    renderer.drawOutline(px + 3, py + 2, 26, 28, SDL_Color{65, 35, 18, 255});
+                    renderer.drawRect(px + 5, py + 15, 22, 3, SDL_Color{125, 75, 40, 255});
+                    renderer.drawRect(px + 6, py + 5, 4, 10, SDL_Color{195, 50, 45, 255});
+                    renderer.drawRect(px + 11, py + 6, 4, 9, SDL_Color{45, 120, 190, 255});
+                    renderer.drawRect(px + 16, py + 4, 5, 11, SDL_Color{45, 150, 75, 255});
+                    renderer.drawRect(px + 22, py + 7, 3, 8, SDL_Color{220, 185, 45, 255});
+                    renderer.drawRect(px + 6, py + 18, 5, 10, SDL_Color{160, 60, 160, 255});
+                    renderer.drawRect(px + 12, py + 19, 4, 9, SDL_Color{210, 110, 35, 255});
+                    renderer.drawRect(px + 17, py + 18, 6, 10, SDL_Color{60, 130, 180, 255});
+                    break;
+                }
+                case TileType::InteriorExit: {
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{188, 138, 86, 255});
+                    renderer.drawRect(px + 3, py + 6, 26, 20, SDL_Color{165, 55, 45, 255});
+                    renderer.drawOutline(px + 3, py + 6, 26, 20, SDL_Color{235, 205, 120, 255});
+                    renderer.drawRect(px + 7, py + 10, 18, 12, SDL_Color{195, 75, 60, 255});
+                    renderer.drawRect(px + 14, py + 12, 4, 8, SDL_Color{255, 235, 160, 255});
+                    renderer.drawRect(px + 12, py + 18, 8, 3, SDL_Color{255, 235, 160, 255});
                     break;
                 }
             }

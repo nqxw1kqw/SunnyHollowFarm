@@ -18,6 +18,11 @@
 #include "ui/ShopUI.h"
 #include "systems/TimeSystem.h"
 
+enum class Location {
+    Farm,
+    FarmhouseInterior
+};
+
 // Top-level application class orchestrating game setup, fixed-timestep loop, and teardown.
 class Game {
 public:
@@ -55,6 +60,14 @@ public:
     const TimeSystem& getTimeSystem() const { return m_timeSystem; }
     TimeSystem& getTimeSystem() { return m_timeSystem; }
 
+    Location getLocation() const { return m_location; }
+    void setLocation(Location loc) { m_location = loc; }
+    const Map& getInteriorMap() const { return m_interiorMap; }
+    Map& getInteriorMap() { return m_interiorMap; }
+    const Map& getCurrentMap() const { return (m_location == Location::Farm) ? m_map : m_interiorMap; }
+    Map& getCurrentMap() { return (m_location == Location::Farm) ? m_map : m_interiorMap; }
+    void transitionTo(Location loc);
+
 private:
     void handleInput();
     void update(float dt);
@@ -67,7 +80,9 @@ private:
     Time m_time;
     Input m_input;
 
+    Location m_location = Location::Farm;
     Map m_map;
+    Map m_interiorMap;
     Player m_player;
     Inventory m_inventory;
     FarmSystem m_farmSystem;

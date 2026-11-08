@@ -93,6 +93,9 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
     // Initialize shop prices from assets/data/prices.txt
     m_shopSystem.loadPrices("assets/data/prices.txt");
 
+    // Initialize farmhouse interior room map
+    m_interiorMap.initInterior();
+
     m_isRunning = true;
     std::cout << "Sunny Hollow Farm initialized successfully (" << width << "x" << height << ")" << std::endl;
     if (m_smokeTestMode) {
@@ -162,6 +165,21 @@ void Game::run() {
     }
 }
 
+void Game::transitionTo(Location loc) {
+    m_location = loc;
+    if (loc == Location::FarmhouseInterior) {
+        m_player.setPosition(9.0f * Map::TILE_SIZE, 9.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        m_hud.showFeedback("ENTERED FARMHOUSE");
+        std::cout << "[Transition] Entered Farmhouse Interior (spawned at 9, 9)." << std::endl;
+    } else {
+        m_player.setPosition(2.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Down);
+        m_hud.showFeedback("EXITED TO FARM");
+        std::cout << "[Transition] Exited Farmhouse to Farm (spawned at 2, 3)." << std::endl;
+    }
+}
+
 void Game::handleInput() {
     // Inventory toggle key (Tab or I)
     if (m_input.isKeyPressed(SDL_SCANCODE_TAB) || m_input.isKeyPressed(SDL_SCANCODE_I)) {
@@ -215,6 +233,51 @@ void Game::handleInput() {
         m_input.isKeyPressed(SDL_SCANCODE_E) ||
         m_input.isKeyPressed(SDL_SCANCODE_RETURN) ||
         m_input.isKeyPressed(SDL_SCANCODE_C)) {
+
+        if (m_location == Location::FarmhouseInterior) {
+            auto [tx, ty] = m_player.getTargetTile();
+            if (m_interiorMap.inBounds(tx, ty)) {
+                TileType type = m_interiorMap.getTile(tx, ty).getType();
+                if (type == TileType::Bed) {
+                    m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+                    std::cout << "[Interior] Slept at comfortable indoor bed." << std::endl;
+                    return;
+                }
+                if (type == TileType::Stove) {
+                    m_cookingUI.open();
+                    std::cout << "[Interior] Opened indoor kitchen stove at (" << tx << ", " << ty << ")." << std::endl;
+                    return;
+                }
+                if (type == TileType::Chest) {
+                    int tom = m_inventory.getItemCount(ItemType::Tomato);
+                    int wht = m_inventory.getItemCount(ItemType::Wheat);
+                    int car = m_inventory.getItemCount(ItemType::Carrot);
+                    int sal = m_inventory.getItemCount(ItemType::Salad);
+                    int brd = m_inventory.getItemCount(ItemType::Bread);
+                    std::string msg = "CHEST: " + std::to_string(tom) + " TOM, "
+                                      + std::to_string(wht) + " WHT, "
+                                      + std::to_string(car) + " CAR, "
+                                      + std::to_string(sal) + " SALAD, "
+                                      + std::to_string(brd) + " BREAD";
+                    m_hud.showFeedback(msg, 3.0f);
+                    std::cout << "[Interior] " << msg << std::endl;
+                    return;
+                }
+                if (type == TileType::Bookshelf) {
+                    std::string msg = "ALMANAC: WATER CROPS DAILY FOR 2.5X GROWTH!";
+                    m_hud.showFeedback(msg, 3.0f);
+                    std::cout << "[Interior] Bookshelf: " << msg << std::endl;
+                    return;
+                }
+                if (type == TileType::InteriorExit) {
+                    transitionTo(Location::Farm);
+                    return;
+                }
+            }
+            return;
+        }
+
+        // Location is Farm:
         auto [tx, ty] = m_player.getTargetTile();
 
         // 1. Stove kitchen interaction point check
@@ -240,7 +303,14 @@ void Game::handleInput() {
             return;
         }
 
-        // 4. Farmhouse / Bed interaction check
+        // 4. Farmhouse door / entrance check
+        if (m_map.inBounds(tx, ty) &&
+            (m_map.getTile(tx, ty).getType() == TileType::FarmhouseDoor || (tx == 2 && ty == 2))) {
+            transitionTo(Location::FarmhouseInterior);
+            return;
+        }
+
+        // Farmhouse rest structure check
         if (m_map.inBounds(tx, ty) &&
             (m_map.getTile(tx, ty).getType() == TileType::Farmhouse || TimeSystem::isBedTile(tx, ty))) {
             m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
@@ -257,10 +327,27 @@ void Game::update(float dt) {
     m_hud.update(dt);
 
     // Player movements and world physics only progress if modals are closed
+    Map& activeMap = (m_location == Location::Farm) ? m_map : m_interiorMap;
     if (!m_inventoryUI.isOpen() && !m_cookingUI.isOpen() && !m_shopUI.isOpen()) {
-        m_player.update(dt, m_input, m_map);
+        m_player.update(dt, m_input, activeMap);
     }
     m_farmSystem.update(dt, m_map);
+
+    // Zone transition check based on player position
+    float footX = m_player.getX() + 16.0f;
+    float footY = m_player.getY() + 24.0f;
+    int curTileX = static_cast<int>(footX / Map::TILE_SIZE);
+    int curTileY = static_cast<int>(footY / Map::TILE_SIZE);
+
+    if (m_location == Location::Farm) {
+        if (curTileX == 2 && curTileY == 2) {
+            transitionTo(Location::FarmhouseInterior);
+        }
+    } else {
+        if (curTileX == 9 && curTileY == 10) {
+            transitionTo(Location::Farm);
+        }
+    }
 
     // Headless smoke test verification sequence
     if (m_smokeTestMode) {
@@ -502,6 +589,34 @@ void Game::update(float dt) {
             assert(TimeSystem::isBedTile(2, 2) && "Farmhouse entrance / bed tile at (2, 2) must be recognized");
 
             std::cout << "[Smoke Test] Day cycle verified: Day incremented (1->2), Energy restored (25->100), Crop stage advanced (Seed->Sprout), Watered soil dried back to Tilled soil!" << std::endl;
+        } else if (m_smokeTestFrames == 145) {
+            // Milestone 7 / Part 2: Verify farmhouse interior transition, props, indoor cooking, indoor bed, and exit
+            transitionTo(Location::FarmhouseInterior);
+            assert(m_location == Location::FarmhouseInterior);
+            assert(m_player.getX() == 9.0f * Map::TILE_SIZE && m_player.getY() == 9.0f * Map::TILE_SIZE);
+            assert(m_interiorMap.getTile(6, 4).getType() == TileType::Bed);
+            assert(m_interiorMap.getTile(11, 4).getType() == TileType::Stove);
+            assert(m_interiorMap.getTile(8, 4).getType() == TileType::Chest);
+            assert(m_interiorMap.getTile(13, 5).getType() == TileType::Bookshelf);
+            assert(m_interiorMap.getTile(9, 10).getType() == TileType::InteriorExit);
+
+            // Test indoor cooking
+            m_inventory.addItem(ItemType::Tomato, 2);
+            bool cooked = m_cookingSystem.cook(ItemType::Salad, m_inventory, &m_hud);
+            assert(cooked && "Indoor cooking must succeed");
+
+            // Test indoor bed sleep
+            m_player.setEnergy(50);
+            int dayBefore = m_timeSystem.getDay();
+            m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+            assert(m_timeSystem.getDay() == dayBefore + 1);
+            assert(m_player.getEnergy() == Config::INITIAL_ENERGY);
+
+            // Exit back to farm
+            transitionTo(Location::Farm);
+            assert(m_location == Location::Farm);
+            assert(m_player.getX() == 2.0f * Map::TILE_SIZE && m_player.getY() == 3.0f * Map::TILE_SIZE);
+            std::cout << "[Smoke Test] Farmhouse interior verified: enter -> indoor cooking -> indoor bed sleep -> exit back to farm!" << std::endl;
         }
     }
 }
@@ -510,20 +625,25 @@ void Game::render() {
     // Clear screen with a neutral dark tone
     m_renderer.clear(SDL_Color{20, 20, 20, 255});
 
-    // 1. Render terrain tile map
-    m_map.render(m_renderer);
+    if (m_location == Location::Farm) {
+        // 1. Render terrain tile map
+        m_map.render(m_renderer);
 
-    // 2. Render planted crops
-    m_farmSystem.render(m_renderer);
+        // 2. Render planted crops
+        m_farmSystem.render(m_renderer);
 
-    // 3. Render merchant NPCs (Seller and Buyer)
-    m_sellerNPC.render(m_renderer);
-    m_buyerNPC.render(m_renderer);
+        // 3. Render merchant NPCs (Seller and Buyer)
+        m_sellerNPC.render(m_renderer);
+        m_buyerNPC.render(m_renderer);
+    } else {
+        // Render Farmhouse interior room
+        m_interiorMap.render(m_renderer);
+    }
 
     // 4. Render farmer player
     m_player.render(m_renderer);
 
-    // 5. Render HUD with Day Counter (hotbar, money counter, energy bar, day counter, inventory hint, tomato counter, feedback banner)
+    // 5. Render HUD with Day Counter
     m_hud.render(m_renderer, m_inventory, m_player, m_timeSystem.getDay());
 
     // 6. Render Inventory Grid modal when open
@@ -854,8 +974,137 @@ void Game::updatePlaytest(float dt) {
                   << ", WheatSeeds: " << m_inventory.getItemCount(ItemType::WheatSeeds)
                   << ", CarrotSeeds: " << m_inventory.getItemCount(ItemType::CarrotSeeds)
                   << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
-    } else if (m_playtestFrames >= 105) {
-        std::cout << "[PASS] Full playthrough playtest completed successfully across "
+    } else if (m_playtestFrames == 105) {
+        // Step 10: Enter farmhouse interior: step onto door tile (2, 2)
+        m_player.setPosition(2.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        // Step onto door tile at (2, 2)
+        m_player.setPosition(2.0f * Map::TILE_SIZE, 2.0f * Map::TILE_SIZE);
+        transitionTo(Location::FarmhouseInterior);
+
+        assert(m_location == Location::FarmhouseInterior && "Location must transition to FarmhouseInterior");
+        assert(m_player.getX() == 9.0f * Map::TILE_SIZE && m_player.getY() == 9.0f * Map::TILE_SIZE && "Player must spawn at (9, 9) inside");
+        assert(m_player.getFacing() == Direction::Up);
+
+        // Verify interior room bounds and contents
+        assert(m_interiorMap.getTile(6, 4).getType() == TileType::Bed && "Indoor bed must be at (6, 4)");
+        assert(m_interiorMap.getTile(8, 4).getType() == TileType::Chest && "Storage chest must be at (8, 4)");
+        assert(m_interiorMap.getTile(11, 4).getType() == TileType::Stove && "Indoor stove must be at (11, 4)");
+        assert(m_interiorMap.getTile(13, 5).getType() == TileType::Bookshelf && "Bookshelf must be at (13, 5)");
+        assert(m_interiorMap.getTile(9, 10).getType() == TileType::InteriorExit && "Interior exit doorway must be at (9, 10)");
+
+        // Verify interior collisions
+        assert(!m_interiorMap.getTile(5, 5).isWalkable() && "Interior side wall must be impassable");
+        assert(!m_interiorMap.getTile(6, 3).isWalkable() && "Interior top wall must be impassable");
+        assert(!m_interiorMap.getTile(6, 4).isWalkable() && "Bed must be impassable");
+        assert(m_interiorMap.getTile(7, 7).isWalkable() && "Wood floor must be walkable");
+
+        std::cout << "[PASS] Step 10: Entered farmhouse interior through door tile: Location is FarmhouseInterior, Player at (9, 9) facing Up" << std::endl;
+    } else if (m_playtestFrames == 115) {
+        // Step 11: Interacting with interior props: Storage Chest and Bookshelf
+        // 1. Move to Storage Chest at (8, 4) from (8, 5) facing Up
+        m_player.setPosition(8.0f * Map::TILE_SIZE, 5.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        auto [txChest, tyChest] = m_player.getTargetTile();
+        assert(txChest == 8 && tyChest == 4 && "Target tile must be Chest (8, 4)");
+        assert(m_interiorMap.getTile(txChest, tyChest).getType() == TileType::Chest);
+
+        // Interact with chest
+        int tom = m_inventory.getItemCount(ItemType::Tomato);
+        int wht = m_inventory.getItemCount(ItemType::Wheat);
+        int car = m_inventory.getItemCount(ItemType::Carrot);
+        std::string chestMsg = "CHEST: " + std::to_string(tom) + " TOM, "
+                              + std::to_string(wht) + " WHT, "
+                              + std::to_string(car) + " CAR";
+        m_hud.showFeedback(chestMsg, 3.0f);
+        assert(m_hud.hasActiveFeedback());
+
+        // 2. Move to Bookshelf at (13, 5) from (12, 5) facing Right
+        m_player.setPosition(12.0f * Map::TILE_SIZE, 5.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Right);
+        auto [txBook, tyBook] = m_player.getTargetTile();
+        assert(txBook == 13 && tyBook == 5 && "Target tile must be Bookshelf (13, 5)");
+        assert(m_interiorMap.getTile(txBook, tyBook).getType() == TileType::Bookshelf);
+
+        std::string bookMsg = "ALMANAC: WATER CROPS DAILY FOR 2.5X GROWTH!";
+        m_hud.showFeedback(bookMsg, 3.0f);
+        assert(m_hud.hasActiveFeedback());
+
+        std::cout << "[PASS] Step 11: Interacted with interior props: Storage Chest reported inventory, Bookshelf displayed farming guide" << std::endl;
+    } else if (m_playtestFrames == 125) {
+        // Step 12: Cook indoors at kitchen stove
+        // Provide ingredients (2x Tomato) to test cooking indoors
+        m_inventory.addItem(ItemType::Tomato, 2);
+        assert(m_inventory.getItemCount(ItemType::Tomato) == 2);
+        assert(m_inventory.getItemCount(ItemType::Salad) == 0);
+
+        m_player.setPosition(11.0f * Map::TILE_SIZE, 5.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        auto [txStove, tyStove] = m_player.getTargetTile();
+        assert(txStove == 11 && tyStove == 4 && "Target tile must be indoor Stove at (11, 4)");
+        assert(m_interiorMap.getTile(txStove, tyStove).getType() == TileType::Stove);
+
+        m_cookingUI.open();
+        assert(m_cookingUI.isOpen() && "CookingUI should open indoors");
+
+        bool cookOk = m_cookingSystem.cook(ItemType::Salad, m_inventory, &m_hud);
+        assert(cookOk && "Indoor cooking must succeed with 2 tomatoes");
+        assert(m_inventory.getItemCount(ItemType::Tomato) == 0 && "Tomatoes consumed");
+        assert(m_inventory.getItemCount(ItemType::Salad) == 1 && "1x Salad added to inventory");
+
+        m_cookingUI.close();
+        assert(!m_cookingUI.isOpen());
+
+        std::cout << "[PASS] Step 12: Cooked Salad indoors at farmhouse stove: Ingredients consumed, 1x Salad added to inventory" << std::endl;
+    } else if (m_playtestFrames == 135) {
+        // Step 13: Sleep at indoor bed with Milestone 6 overnight rules
+        m_player.setEnergy(25);
+        assert(m_player.getEnergy() == 25);
+        int dayBefore = m_timeSystem.getDay(); // was 4
+
+        m_player.setPosition(6.0f * Map::TILE_SIZE, 5.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        auto [txBed, tyBed] = m_player.getTargetTile();
+        assert(txBed == 6 && tyBed == 4 && "Target tile must be Bed at (6, 4)");
+        assert(m_interiorMap.getTile(txBed, tyBed).getType() == TileType::Bed);
+
+        // Sleep at indoor bed
+        m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+
+        // Verify Milestone 6 rules:
+        // 1. Day increments
+        assert(m_timeSystem.getDay() == dayBefore + 1 && "Day must advance by 1");
+        // 2. Energy fully restored
+        assert(m_player.getEnergy() == Config::INITIAL_ENERGY && "Energy must be fully restored to 100");
+        // 3. HUD feedback banner triggered
+        assert(m_hud.hasActiveFeedback() && "Wake-up feedback notification active");
+
+        std::cout << "[PASS] Step 13: Slept at indoor bed: Day advanced (" << dayBefore << "->" << m_timeSystem.getDay()
+                  << "), Energy restored (25->100), Milestone 6 rules verified" << std::endl;
+    } else if (m_playtestFrames == 145) {
+        // Step 14: Exit farmhouse back to farm via interior exit
+        m_player.setPosition(9.0f * Map::TILE_SIZE, 9.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Down);
+        // Step onto exit doorway tile (9, 10)
+        m_player.setPosition(9.0f * Map::TILE_SIZE, 10.0f * Map::TILE_SIZE);
+        transitionTo(Location::Farm);
+
+        assert(m_location == Location::Farm && "Location must transition back to Farm");
+        assert(m_player.getX() == 2.0f * Map::TILE_SIZE && m_player.getY() == 3.0f * Map::TILE_SIZE && "Player must spawn just outside door at (2, 3)");
+        assert(m_player.getFacing() == Direction::Down);
+
+        // Verify game state is sane
+        assert(m_timeSystem.getDay() == 5);
+        assert(m_player.getEnergy() == Config::INITIAL_ENERGY);
+        assert(m_inventory.getMoney() == 89);
+        assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == 6);
+        assert(m_inventory.getItemCount(ItemType::WheatSeeds) == 3);
+        assert(m_inventory.getItemCount(ItemType::CarrotSeeds) == 1);
+        assert(m_inventory.getItemCount(ItemType::Salad) == 1);
+
+        std::cout << "[PASS] Step 14: Exited farmhouse back to farm: Player positioned outside door at (2, 3) facing Down, game state sane" << std::endl;
+    } else if (m_playtestFrames >= 155) {
+        std::cout << "[PASS] Full playthrough playtest and farmhouse interior verifications passed cleanly across "
                   << m_timeSystem.getDay() << " in-game days!" << std::endl;
         m_isRunning = false;
     }

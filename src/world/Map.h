@@ -16,6 +16,9 @@ public:
     // Sets up the initial cozy farm layout with grass, tillable dirt plot, pond, and fences.
     void initDefault();
 
+    // Sets up the farmhouse interior room with bed, indoor stove, storage chest, bookshelf, and exit.
+    void initInterior();
+
     bool inBounds(int tileX, int tileY) const;
 
     Tile& getTile(int tileX, int tileY);
