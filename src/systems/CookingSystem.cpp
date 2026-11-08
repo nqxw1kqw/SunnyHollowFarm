@@ -42,6 +42,7 @@ bool CookingSystem::loadRecipes(const std::string& filePath) {
         m_recipes.push_back({ItemType::Salad, "Salad", {{ItemType::Tomato, 2}}});
         m_recipes.push_back({ItemType::Bread, "Bread", {{ItemType::Wheat, 3}}});
         m_recipes.push_back({ItemType::GrilledFish, "Grilled Fish", {{ItemType::Fish, 1}}});
+        m_recipes.push_back({ItemType::Omelette, "Omelette", {{ItemType::Egg, 2}}});
         return false;
     }
 

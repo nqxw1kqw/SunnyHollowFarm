@@ -7,9 +7,10 @@
 # - Ingredient counts must be positive integers.
 #
 # Available items:
-# - Dishes: Salad, Bread, Grilled Fish
-# - Produce / Ingredients: Tomato, Carrot, Wheat, Fish
+# - Dishes: Salad, Bread, Grilled Fish, Omelette
+# - Produce / Ingredients: Tomato, Carrot, Wheat, Fish, Egg
 #
 Salad = Tomato:2
 Bread = Wheat:3
 Grilled Fish = Fish:1
+Omelette = Egg:2

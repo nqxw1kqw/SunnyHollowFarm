@@ -14,10 +14,24 @@ struct ItemPrice {
 
 class AudioSystem;
 
+#include <functional>
+
 // Shop system handling economy prices, purchases, and sales.
 class ShopSystem {
 public:
+    using ChickenCountFn = std::function<int()>;
+    using BuyChickenFn = std::function<bool()>;
+
     ShopSystem() = default;
+
+    // Registers callbacks for querying chicken count and adding chickens to the pen
+    void setChickenHandler(ChickenCountFn countFn, BuyChickenFn buyFn) {
+        m_chickenCountFn = countFn;
+        m_buyChickenFn = buyFn;
+    }
+    int getChickenCount() const {
+        return m_chickenCountFn ? m_chickenCountFn() : 0;
+    }
 
     // Parses prices from prices.txt (with fallback search paths).
     bool loadPrices(const std::string& filePath = "assets/data/prices.txt");
@@ -44,4 +58,6 @@ private:
     std::unordered_map<ItemType, ItemPrice> m_prices;
     std::vector<ItemType> m_sellerCatalog;
     std::vector<ItemType> m_buyerCatalog;
+    ChickenCountFn m_chickenCountFn;
+    BuyChickenFn m_buyChickenFn;
 };

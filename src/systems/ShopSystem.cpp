@@ -19,7 +19,8 @@ bool ShopSystem::loadPrices(const std::string& filePath) {
         ItemType::TomatoSeeds,
         ItemType::WheatSeeds,
         ItemType::CarrotSeeds,
-        ItemType::Wheat
+        ItemType::Wheat,
+        ItemType::Chicken
     };
     m_buyerCatalog = {
         ItemType::Tomato,
@@ -28,7 +29,9 @@ bool ShopSystem::loadPrices(const std::string& filePath) {
         ItemType::Salad,
         ItemType::Bread,
         ItemType::Fish,
-        ItemType::GrilledFish
+        ItemType::GrilledFish,
+        ItemType::Egg,
+        ItemType::Omelette
     };
 
     // Candidate paths to ensure loading works when launched from repo root or build dir
@@ -64,6 +67,9 @@ bool ShopSystem::loadPrices(const std::string& filePath) {
         m_prices[ItemType::Bread]       = {60, 50};
         m_prices[ItemType::Fish]        = {0, 30};
         m_prices[ItemType::GrilledFish] = {0, 55};
+        m_prices[ItemType::Chicken]     = {100, 0};
+        m_prices[ItemType::Egg]         = {0, 15};
+        m_prices[ItemType::Omelette]    = {0, 50};
         return false;
     }
 
@@ -141,6 +147,43 @@ int ShopSystem::getSellPrice(ItemType item) const {
 bool ShopSystem::buyItem(ItemType item, int count, Inventory& inventory, HUD* hud, AudioSystem* audio) {
     if (item == ItemType::Empty || count <= 0) return false;
 
+    // Special Chicken purchase handling (increments farm chicken count, does NOT enter inventory)
+    if (item == ItemType::Chicken) {
+        int unitPrice = getBuyPrice(item);
+        if (m_chickenCountFn && m_chickenCountFn() >= 6) {
+            std::cout << "[ShopSystem] Buy refused: Chicken pen is already at full capacity (6/6)!" << std::endl;
+            if (hud) {
+                hud->showFeedback("PEN AT CAPACITY (6/6)!");
+            }
+            return false;
+        }
+
+        if (inventory.getMoney() < unitPrice) {
+            std::cout << "[ShopSystem] Buy refused: Not enough money! (Need " << unitPrice
+                      << "G, have " << inventory.getMoney() << "G)" << std::endl;
+            if (hud) {
+                hud->showFeedback("NOT ENOUGH MONEY!");
+            }
+            return false;
+        }
+
+        // Deduct money and spawn chicken (does NOT put anything in bag)
+        inventory.spendMoney(unitPrice);
+        if (m_buyChickenFn) {
+            m_buyChickenFn();
+        }
+
+        std::cout << "[ShopSystem] Purchased Chicken for " << unitPrice
+                  << "G [Remaining Wallet: " << inventory.getMoney() << "G]" << std::endl;
+        if (audio) {
+            audio->playSFX(SFX::Buy);
+        }
+        if (hud) {
+            hud->showFeedback("BOUGHT: CHICKEN (-" + std::to_string(unitPrice) + "G)");
+        }
+        return true;
+    }
+
     int unitPrice = getBuyPrice(item);
     int totalCost = unitPrice * count;
 
@@ -181,6 +224,14 @@ bool ShopSystem::buyItem(ItemType item, int count, Inventory& inventory, HUD* hu
 
 bool ShopSystem::sellItem(ItemType item, int count, Inventory& inventory, HUD* hud, AudioSystem* audio) {
     if (item == ItemType::Empty || count <= 0) return false;
+
+    if (item == ItemType::Chicken) {
+        std::cout << "[ShopSystem] Sell refused: Selling chickens is not supported!" << std::endl;
+        if (hud) {
+            hud->showFeedback("CANNOT SELL CHICKENS!");
+        }
+        return false;
+    }
 
     int haveCount = inventory.getItemCount(item);
     if (haveCount < count) {

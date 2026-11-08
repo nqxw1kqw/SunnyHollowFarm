@@ -7,11 +7,12 @@
 # - BuyPrice is the cost to purchase from the Seller NPC.
 # - SellPrice is the coin payout when sold to the Buyer NPC.
 #
-# Seeds & Basics (Seller NPC)
+# Seeds, Livestock & Basics (Seller NPC)
 TomatoSeeds = Buy:15, Sell:8
 CarrotSeeds = Buy:20, Sell:10
 WheatSeeds  = Buy:10, Sell:5
 Wheat       = Buy:18, Sell:14
+Chicken     = Buy:100, Sell:0
 
 # Fresh Produce & Kitchen Dishes (Buyer NPC)
 Tomato = Buy:25, Sell:20
@@ -20,3 +21,5 @@ Salad  = Buy:50, Sell:40
 Bread  = Buy:60, Sell:50
 Fish   = Buy:0, Sell:30
 Grilled Fish = Buy:0, Sell:55
+Egg    = Buy:0, Sell:15
+Omelette = Buy:0, Sell:50

@@ -117,11 +117,20 @@ void ShopUI::render(Renderer& renderer, const Inventory& inventory, const ShopSy
     const auto& catalog = (m_mode == ShopMode::Buy) ? shopSystem.getSellerCatalog() : shopSystem.getBuyerCatalog();
     int listY = tabY + 30;
     constexpr int ITEM_H = 40;
+    constexpr int MAX_VISIBLE = 5;
 
-    for (size_t i = 0; i < catalog.size(); ++i) {
+    int totalItems = static_cast<int>(catalog.size());
+    int scrollOffset = 0;
+    if (totalItems > MAX_VISIBLE) {
+        scrollOffset = std::max(0, std::min(m_selectedIndex - (MAX_VISIBLE / 2), totalItems - MAX_VISIBLE));
+    }
+
+    int visibleCount = std::min(MAX_VISIBLE, totalItems);
+    for (int vi = 0; vi < visibleCount; ++vi) {
+        int i = scrollOffset + vi;
         ItemType item = catalog[i];
-        int itemY = listY + static_cast<int>(i) * (ITEM_H + 4);
-        bool isSelected = (static_cast<int>(i) == m_selectedIndex);
+        int itemY = listY + vi * (ITEM_H + 4);
+        bool isSelected = (i == m_selectedIndex);
 
         int rowX = WIN_X + 14;
         int rowW = WIN_W - 28;
@@ -163,12 +172,17 @@ void ShopUI::render(Renderer& renderer, const Inventory& inventory, const ShopSy
             SDL_Color priceCol = hasBtn ? SDL_Color{140, 85, 15, 255} : SDL_Color{255, 215, 60, 255};
             BitmapFont::drawText(renderer, priceStr, WIN_X + 70, itemY + 22, priceCol, 1);
 
-            std::string bagStr = "(In Bag: " + std::to_string(inBag) + ")";
+            std::string bagStr = (item == ItemType::Chicken)
+                ? "(Pen: " + std::to_string(shopSystem.getChickenCount()) + "/6)"
+                : "(In Bag: " + std::to_string(inBag) + ")";
             SDL_Color bagCol = hasBtn ? SDL_Color{100, 80, 65, 255} : SDL_Color{160, 150, 140, 255};
             BitmapFont::drawText(renderer, bagStr, WIN_X + 160, itemY + 22, bagCol, 1);
 
             // Buy afford badge
-            if (inventory.getMoney() >= price) {
+            if (item == ItemType::Chicken && shopSystem.getChickenCount() >= 6) {
+                SDL_Color capCol = hasBtn ? SDL_Color{180, 45, 35, 255} : SDL_Color{230, 90, 80, 255};
+                BitmapFont::drawText(renderer, "[CAP 6/6]", WIN_X + WIN_W - 95, itemY + 12, capCol, 1);
+            } else if (inventory.getMoney() >= price) {
                 SDL_Color buyBadgeCol = hasBtn ? SDL_Color{35, 125, 40, 255} : SDL_Color{120, 235, 120, 255};
                 BitmapFont::drawText(renderer, "[BUY]", WIN_X + WIN_W - 75, itemY + 12, buyBadgeCol, 2);
             } else {

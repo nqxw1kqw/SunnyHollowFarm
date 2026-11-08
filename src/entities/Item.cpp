@@ -34,6 +34,15 @@ const ItemDefinition& getItemDefinition(ItemType type) {
     static const ItemDefinition grilledFishDef{
         ItemType::GrilledFish, "Grilled Fish", "A hot grilled fish with crispy skin.", 0, 55, false, false, 0
     };
+    static const ItemDefinition eggDef{
+        ItemType::Egg, "Egg", "A fresh farm egg laid by a happy chicken.", 0, 15, false, false, 0
+    };
+    static const ItemDefinition omeletteDef{
+        ItemType::Omelette, "Omelette", "A hot, fluffy golden omelette cooked from fresh farm eggs.", 0, 50, false, true, 40
+    };
+    static const ItemDefinition chickenDef{
+        ItemType::Chicken, "Chicken", "A healthy egg-laying hen for the chicken pen.", 100, 0, false, false, 0
+    };
 
     switch (type) {
         case ItemType::TomatoSeeds: return tomatoSeedsDef;
@@ -46,6 +55,9 @@ const ItemDefinition& getItemDefinition(ItemType type) {
         case ItemType::Bread:        return breadDef;
         case ItemType::Fish:         return fishDef;
         case ItemType::GrilledFish:  return grilledFishDef;
+        case ItemType::Egg:          return eggDef;
+        case ItemType::Omelette:     return omeletteDef;
+        case ItemType::Chicken:      return chickenDef;
         default:                     return emptyDef;
     }
 }
@@ -63,6 +75,9 @@ void drawItemPlaceholder(Renderer& renderer, ItemType type, int x, int y, int si
         case ItemType::Bread: sprite = "item_bread.png"; break;
         case ItemType::Fish: sprite = "item_fish.png"; break;
         case ItemType::GrilledFish: sprite = "item_grilled_fish.png"; break;
+        case ItemType::Egg: sprite = "item_egg.png"; break;
+        case ItemType::Omelette: sprite = "item_omelette.png"; break;
+        case ItemType::Chicken: sprite = "chicken_idle.png"; break;
         default: break;
     }
     if (sprite && renderer.drawSprite(sprite, x, y, size, size)) return;
@@ -182,6 +197,52 @@ void drawItemPlaceholder(Renderer& renderer, ItemType type, int x, int y, int si
             break;
         }
 
+        case ItemType::Egg: {
+            // Egg shell shadow
+            renderer.drawRect(x + S(10), y + S(22), S(12), S(3), SDL_Color{205, 195, 175, 255});
+            // Oval egg body (ivory / warm cream)
+            renderer.drawRect(x + S(11), y + S(8), S(10), S(4), SDL_Color{248, 244, 232, 255});
+            renderer.drawRect(x + S(9), y + S(12), S(14), S(10), SDL_Color{252, 248, 238, 255});
+            renderer.drawRect(x + S(10), y + S(20), S(12), S(3), SDL_Color{235, 225, 205, 255});
+            // Shell highlight shine
+            renderer.drawRect(x + S(12), y + S(10), S(3), S(3), SDL_Color{255, 255, 255, 255});
+            break;
+        }
+
+        case ItemType::Omelette: {
+            // Hot skillet / plate base
+            renderer.drawRect(x + S(5), y + S(22), S(22), S(4), SDL_Color{90, 85, 95, 255});
+            renderer.drawRect(x + S(3), y + S(20), S(26), S(3), SDL_Color{120, 115, 125, 255});
+            // Fluffy golden folded omelette
+            renderer.drawRect(x + S(6), y + S(12), S(20), S(9), SDL_Color{250, 195, 45, 255});
+            renderer.drawRect(x + S(8), y + S(10), S(16), S(4), SDL_Color{255, 215, 75, 255});
+            // Light browning along fold
+            renderer.drawRect(x + S(9), y + S(15), S(14), S(2), SDL_Color{215, 140, 25, 255});
+            // Fresh chopped green chives garnish
+            renderer.drawRect(x + S(11), y + S(12), S(2), S(2), SDL_Color{45, 155, 40, 255});
+            renderer.drawRect(x + S(17), y + S(13), S(2), S(2), SDL_Color{45, 155, 40, 255});
+            renderer.drawRect(x + S(14), y + S(17), S(2), S(2), SDL_Color{45, 155, 40, 255});
+            break;
+        }
+
+        case ItemType::Chicken: {
+            // Cute mini chicken icon for shop listing
+            // Body
+            renderer.drawRect(x + S(9), y + S(12), S(14), S(11), SDL_Color{250, 250, 250, 255});
+            // Head
+            renderer.drawRect(x + S(15), y + S(8), S(8), S(8), SDL_Color{255, 255, 255, 255});
+            // Red comb
+            renderer.drawRect(x + S(17), y + S(5), S(5), S(3), SDL_Color{225, 40, 40, 255});
+            // Yellow beak
+            renderer.drawRect(x + S(23), y + S(11), S(4), S(3), SDL_Color{250, 190, 30, 255});
+            // Eye
+            renderer.drawRect(x + S(19), y + S(10), S(2), S(2), SDL_Color{30, 30, 30, 255});
+            // Feet
+            renderer.drawRect(x + S(12), y + S(23), S(3), S(4), SDL_Color{240, 150, 20, 255});
+            renderer.drawRect(x + S(17), y + S(23), S(3), S(4), SDL_Color{240, 150, 20, 255});
+            break;
+        }
+
         default:
             break;
     }
@@ -198,6 +259,9 @@ ItemType itemTypeFromString(const std::string& name) {
     if (name == "Bread" || name == "bread") return ItemType::Bread;
     if (name == "Fish" || name == "fish") return ItemType::Fish;
     if (name == "GrilledFish" || name == "Grilled Fish" || name == "grilled_fish" || name == "Grilled_Fish") return ItemType::GrilledFish;
+    if (name == "Egg" || name == "egg") return ItemType::Egg;
+    if (name == "Omelette" || name == "omelette" || name == "Omelet" || name == "omelet") return ItemType::Omelette;
+    if (name == "Chicken" || name == "chicken") return ItemType::Chicken;
     return ItemType::Empty;
 }
 
@@ -213,6 +277,9 @@ std::string itemTypeToString(ItemType type) {
         case ItemType::Bread:        return "Bread";
         case ItemType::Fish:         return "Fish";
         case ItemType::GrilledFish:  return "Grilled Fish";
+        case ItemType::Egg:          return "Egg";
+        case ItemType::Omelette:     return "Omelette";
+        case ItemType::Chicken:      return "Chicken";
         default:                     return "Empty";
     }
 }
