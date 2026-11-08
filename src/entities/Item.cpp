@@ -23,10 +23,10 @@ const ItemDefinition& getItemDefinition(ItemType type) {
         ItemType::Wheat, "Wheat Sheaf", "Golden grain ready for baking fresh bread.", 18, 14, false, false, 0
     };
     static const ItemDefinition saladDef{
-        ItemType::Salad, "Garden Salad", "Fresh garden vegetables tossed together.", 50, 40, false, true, 35
+        ItemType::Salad, "Garden Salad", "Fresh garden vegetables tossed together.", 50, 40, false, true, 25
     };
     static const ItemDefinition breadDef{
-        ItemType::Bread, "Fresh Bread", "A warm, crusty loaf baked from milled wheat.", 60, 50, false, true, 45
+        ItemType::Bread, "Fresh Bread", "A warm, crusty loaf baked from milled wheat.", 60, 50, false, true, 35
     };
 
     switch (type) {

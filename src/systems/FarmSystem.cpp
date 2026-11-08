@@ -216,9 +216,12 @@ bool FarmSystem::interact(int tileX, int tileY, Map& map, Inventory& inventory, 
                     if (hud) hud->showFeedback("ENERGY ALREADY FULL!");
                     return false;
                 }
+                int restoreAmt = (foodItem == ItemType::Salad) ? 25 : 35;
                 inventory.removeItem(foodItem, 1);
-                player.restoreEnergy(35);
-                if (hud) hud->showFeedback("ATE " + itemTypeToString(foodItem) + "! +35 ENERGY");
+                player.restoreEnergy(restoreAmt);
+                std::string banner = (foodItem == ItemType::Salad) ? "Ate Salad: +25 Energy" : "Ate Bread: +35 Energy";
+                if (hud) hud->showFeedback(banner);
+                if (audio) audio->playSFX(SFX::UIConfirm);
                 std::cout << "[Farm] Consumed 1x " << itemTypeToString(foodItem)
                           << ", restored energy to " << player.getEnergy()
                           << "/" << player.getMaxEnergy() << std::endl;

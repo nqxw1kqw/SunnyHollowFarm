@@ -177,7 +177,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 153) {
+                if (m_smokeTestFrames >= 154) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -301,6 +301,54 @@ void Game::resetGame() {
     std::cout << "[Reset] F9 pressed: deleted save file and restarted at fresh Day 1." << std::endl;
 }
 
+bool Game::eatSelectedItem() {
+    ItemType selectedDish = ItemType::Empty;
+
+    if (m_inventoryUI.isOpen()) {
+        int slotIdx = m_inventoryUI.getSelectedSlot();
+        if (slotIdx >= 0 && slotIdx < m_inventory.getSlotCount()) {
+            ItemType t = m_inventory.getSlot(slotIdx).type;
+            if (t == ItemType::Salad || t == ItemType::Bread) {
+                selectedDish = t;
+            }
+        }
+    } else {
+        if (m_inventory.activeTool == ToolType::Salad) {
+            selectedDish = ItemType::Salad;
+        } else if (m_inventory.activeTool == ToolType::Bread) {
+            selectedDish = ItemType::Bread;
+        }
+    }
+
+    if (selectedDish == ItemType::Empty) {
+        return false;
+    }
+
+    if (m_inventory.getItemCount(selectedDish) <= 0) {
+        m_hud.showFeedback("NO " + itemTypeToString(selectedDish) + " IN INVENTORY!");
+        return false;
+    }
+
+    // Refusal banner at full energy (do not consume)
+    if (m_player.getEnergy() >= m_player.getMaxEnergy()) {
+        m_hud.showFeedback("ENERGY ALREADY FULL!");
+        std::cout << "[Eat] Refused: Farmer energy is already full ("
+                  << m_player.getEnergy() << "/" << m_player.getMaxEnergy() << ")!" << std::endl;
+        return false;
+    }
+
+    int energyBoost = (selectedDish == ItemType::Salad) ? 25 : 35;
+    m_inventory.removeItem(selectedDish, 1);
+    m_player.restoreEnergy(energyBoost);
+    std::string banner = (selectedDish == ItemType::Salad) ? "Ate Salad: +25 Energy" : "Ate Bread: +35 Energy";
+    m_hud.showFeedback(banner);
+    m_audio.playSFX(SFX::UIConfirm);
+
+    std::cout << "[Eat] " << banner << " [Energy: " << m_player.getEnergy()
+              << "/" << m_player.getMaxEnergy() << "]" << std::endl;
+    return true;
+}
+
 void Game::handleInput() {
     // Input is locked during screen transition fades
     if (isInputLocked()) {
@@ -318,6 +366,11 @@ void Game::handleInput() {
         bool muted = m_audio.toggleMute();
         m_hud.showFeedback(muted ? "AUDIO MUTED" : "AUDIO UNMUTED", 1.5f);
         std::cout << "[Audio] Key M pressed: " << (muted ? "MUTED" : "UNMUTED") << std::endl;
+    }
+
+    // Eat food key [F] (Salad +25 energy, Bread +35 energy, clamp at max)
+    if (m_input.isKeyPressed(SDL_SCANCODE_F)) {
+        eatSelectedItem();
     }
 
     // Inventory toggle key (Tab or I)
@@ -1052,6 +1105,70 @@ void Game::update(float dt) {
             }
 
             std::cout << "[Smoke Test] AudioSystem verified: dummy init clean, mute toggle flips state, and every SFX trigger path safe with audio disabled!" << std::endl;
+        } else if (m_smokeTestFrames == 153) {
+            // PART B Eat food for energy verification:
+            // Setup: add 1x Salad and 1x Bread to inventory, set energy to 50
+            m_inventory.addItem(ItemType::Salad, 1);
+            m_inventory.addItem(ItemType::Bread, 1);
+            m_player.setEnergy(50);
+            assert(m_player.getEnergy() == 50);
+
+            // 1. Eat Salad with active tool in hotbar: +25 energy (50 -> 75)
+            m_inventory.activeTool = ToolType::Salad;
+            bool ateSalad = eatSelectedItem();
+            assert(ateSalad && "Eating Salad should succeed");
+            assert(m_player.getEnergy() == 75 && "Eating Salad must restore exactly +25 Energy (50 -> 75)");
+            assert(m_inventory.getItemCount(ItemType::Salad) == 0 && "Salad must be consumed from inventory");
+            assert(m_hud.getActiveFeedback() == "Ate Salad: +25 Energy");
+
+            // 2. Eat Bread with active tool in hotbar: +35 energy with clamp at 100 (75 + 35 = 110 -> clamped to 100)
+            m_inventory.activeTool = ToolType::Bread;
+            bool ateBread = eatSelectedItem();
+            assert(ateBread && "Eating Bread should succeed");
+            assert(m_player.getEnergy() == 100 && "Energy must clamp at max 100 (75 + 35 -> 100)");
+            assert(m_inventory.getItemCount(ItemType::Bread) == 0 && "Bread must be consumed from inventory");
+            assert(m_hud.getActiveFeedback() == "Ate Bread: +35 Energy");
+
+            // 3. Full-energy refusal: energy is at 100, item must NOT be consumed
+            m_inventory.addItem(ItemType::Salad, 1);
+            m_inventory.addItem(ItemType::Bread, 1);
+            assert(m_player.getEnergy() == 100);
+
+            m_inventory.activeTool = ToolType::Salad;
+            bool refusedSalad = eatSelectedItem();
+            assert(!refusedSalad && "Eating at full energy must be refused");
+            assert(m_inventory.getItemCount(ItemType::Salad) == 1 && "Item must not be consumed when refused at full energy");
+            assert(m_player.getEnergy() == 100 && "Energy must remain unchanged at 100");
+            assert(m_hud.hasActiveFeedback());
+
+            m_inventory.activeTool = ToolType::Bread;
+            bool refusedBread = eatSelectedItem();
+            assert(!refusedBread && "Eating Bread at full energy must be refused");
+            assert(m_inventory.getItemCount(ItemType::Bread) == 1 && "Bread must not be consumed when refused at full energy");
+            assert(m_player.getEnergy() == 100);
+
+            // 4. Verify eating from open inventory UI modal
+            m_player.setEnergy(60);
+            m_inventoryUI.open();
+            // Find slot with Salad in inventory
+            int saladSlot = -1;
+            for (int i = 0; i < m_inventory.getSlotCount(); ++i) {
+                if (m_inventory.getSlot(i).type == ItemType::Salad) {
+                    saladSlot = i;
+                    break;
+                }
+            }
+            assert(saladSlot >= 0 && "Salad slot must be found in inventory");
+            m_inventoryUI.setSelectedSlot(saladSlot);
+
+            bool ateFromInv = eatSelectedItem();
+            assert(ateFromInv && "Eating Salad from open inventory modal should succeed");
+            assert(m_player.getEnergy() == 85 && "Energy restored +25 (60 -> 85)");
+            assert(m_inventory.getItemCount(ItemType::Salad) == 0 && "Salad consumed from inventory modal");
+            assert(m_hud.getActiveFeedback() == "Ate Salad: +25 Energy");
+            m_inventoryUI.close();
+
+            std::cout << "[Smoke Test] Eating food verified: exact energy additions (Salad +25, Bread +35), clamping at 100, full-energy refusal retains items!" << std::endl;
         }
     }
 }

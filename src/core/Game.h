@@ -93,6 +93,9 @@ public:
     bool loadGame(const std::string& filepath = "savegame.json");
     void resetGame();
 
+    // Part B: Eat food for energy (Salad +25, Bread +35)
+    bool eatSelectedItem();
+
     // Screen transition fade state machine (~300 ms out + 300 ms in)
     static constexpr float FADE_OUT_DURATION = 0.3f;
     static constexpr float FADE_IN_DURATION = 0.3f;

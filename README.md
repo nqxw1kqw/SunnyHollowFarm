@@ -24,6 +24,15 @@ The save file uses standard JSON formatted with the following top-level keys:
 | `inventory` | Object | Active hotbar tool selection and container slot contents. |
 | `crop_field` | Array | Full state of farm plots, soil hydration, and planted crops. |
 
+## Eating Food for Energy
+
+Prepared dishes can be consumed to restore stamina:
+- **Consuming Dishes (Key F):** With **Salad** or **Bread** selected in the hotbar or highlighted in the Inventory modal, press **F** to eat the dish.
+- **Energy Restored:**
+  - **Salad:** +25 Energy (displays banner `Ate Salad: +25 Energy`)
+  - **Bread:** +35 Energy (displays banner `Ate Bread: +35 Energy`)
+- **Stamina Clamping & Refusal:** Energy is clamped to maximum (100). If the farmer's energy is already full (100/100), consumption is refused with banner `ENERGY ALREADY FULL!`, and the item is retained in inventory.
+
 ## Audio System (SDL2_mixer)
 
 ### Overview
