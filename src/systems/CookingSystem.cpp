@@ -211,6 +211,9 @@ bool CookingSystem::cook(int recipeIndex, Inventory& inventory, HUD* hud, AudioS
 
     // Add resulting dish
     inventory.addItem(r->result, 1);
+    if (m_onCookSuccessCallback) {
+        m_onCookSuccessCallback(1);
+    }
 
     std::cout << "[CookingSystem] Successfully cooked 1x " << r->dishName << "!" << std::endl;
     if (audio) audio->playSFX(SFX::CookSuccess);

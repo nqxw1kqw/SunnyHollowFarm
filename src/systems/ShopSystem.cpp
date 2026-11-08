@@ -250,6 +250,10 @@ bool ShopSystem::sellItem(ItemType item, int count, Inventory& inventory, HUD* h
     inventory.removeItem(item, count);
     inventory.addMoney(totalPayout);
 
+    if (m_onSellCallback) {
+        m_onSellCallback(totalPayout);
+    }
+
     std::cout << "[ShopSystem] Sold " << count << "x " << itemTypeToString(item)
               << " for +" << totalPayout << "G [New Wallet: " << inventory.getMoney() << "G]" << std::endl;
     if (audio) {

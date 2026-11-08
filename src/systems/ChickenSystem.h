@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <random>
+#include <functional>
 #include "entities/Chicken.h"
 #include "entities/Inventory.h"
 #include "ui/HUD.h"
@@ -23,7 +24,11 @@ public:
     static constexpr int GATE_TILE_X = 3;
     static constexpr int GATE_TILE_Y = 10;
 
+    using OnEggCollectedCallback = std::function<void(int count)>;
+
     ChickenSystem();
+
+    void setOnEggCollectedCallback(OnEggCollectedCallback cb) { m_onEggCollectedCallback = cb; }
 
     // Spawns a chicken inside the pen up to pen cap 6. Returns false if already at capacity.
     bool addChicken();
@@ -67,4 +72,5 @@ private:
     std::vector<GroundEgg> m_groundEggs;
     std::mt19937 m_rng;
     bool m_forceEggSpawn = false;
+    OnEggCollectedCallback m_onEggCollectedCallback;
 };

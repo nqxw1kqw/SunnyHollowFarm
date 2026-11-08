@@ -12,9 +12,15 @@ class AudioSystem;
 
 // Core farming simulation system: handles tilling, watering, planting, growing, and harvesting.
 // Enforces energy costs and provides feedback on exhausted stamina.
+#include <functional>
+
 class FarmSystem {
 public:
+    using OnHarvestCallback = std::function<void(int count)>;
+
     FarmSystem() = default;
+
+    void setOnHarvestCallback(OnHarvestCallback cb) { m_onHarvestCallback = cb; }
 
     // Checks if a crop is planted at the given tile coordinates.
     bool hasCrop(int tileX, int tileY) const;
@@ -58,4 +64,5 @@ public:
 
 private:
     std::vector<Crop> m_crops;
+    OnHarvestCallback m_onHarvestCallback;
 };

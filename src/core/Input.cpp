@@ -7,9 +7,6 @@ void Input::pollEvents() {
             m_quitRequested = true;
         } else if (event.type == SDL_KEYDOWN) {
             const SDL_Scancode scancode = event.key.keysym.scancode;
-            if (scancode == SDL_SCANCODE_ESCAPE) {
-                m_quitRequested = true;
-            }
             if (scancode >= 0 && scancode < SDL_NUM_SCANCODES) {
                 if (event.key.repeat == 0 && !m_keysDown[scancode]) {
                     m_keysPressed[scancode] = true;

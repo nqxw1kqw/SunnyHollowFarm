@@ -299,28 +299,32 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     }
 
     // 6. On-screen Feedback Banner (e.g. "NOT ENOUGH ENERGY!")
-    if (m_feedbackTimer > 0.0f) {
-        constexpr int BANNER_W = 320;
-        constexpr int BANNER_H = 36;
-        constexpr int BANNER_X = (Config::SCREEN_WIDTH - BANNER_W) / 2;
-        constexpr int BANNER_Y = 56;
+    renderFeedbackBanner(renderer);
+}
 
-        bool hasDialogue = const_cast<Renderer&>(renderer).drawDialogue(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, false);
-        if (!hasDialogue) {
-            renderer.drawRect(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, SDL_Color{35, 15, 15, 240});
-            renderer.drawOutline(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, SDL_Color{240, 60, 50, 255});
-            renderer.drawOutline(BANNER_X - 1, BANNER_Y - 1, BANNER_W + 2, BANNER_H + 2, SDL_Color{255, 160, 40, 180});
-        }
+void HUD::renderFeedbackBanner(Renderer& renderer) const {
+    if (m_feedbackTimer <= 0.0f) return;
 
-        // Warning '!' badge
-        renderer.drawRect(BANNER_X + 10, BANNER_Y + 7, 20, 22, SDL_Color{210, 40, 30, 255});
-        renderer.drawOutline(BANNER_X + 10, BANNER_Y + 7, 20, 22, SDL_Color{255, 220, 100, 255});
-        BitmapFont::drawChar(renderer, '!', BANNER_X + 17, BANNER_Y + 11, SDL_Color{255, 255, 255, 255}, 2);
+    int textW = BitmapFont::getTextWidth(m_feedbackMessage, 2);
+    int BANNER_W = std::max(320, textW + 54);
+    int BANNER_H = 36;
+    int BANNER_X = (Config::SCREEN_WIDTH - BANNER_W) / 2;
+    constexpr int BANNER_Y = 56;
 
-        // Feedback message text
-        int textW = BitmapFont::getTextWidth(m_feedbackMessage, 2);
-        int textX = BANNER_X + 38 + std::max(0, (BANNER_W - 48 - textW) / 2);
-        SDL_Color textCol = hasDialogue ? SDL_Color{60, 35, 25, 255} : SDL_Color{255, 240, 120, 255};
-        BitmapFont::drawText(renderer, m_feedbackMessage, textX, BANNER_Y + 12, textCol, 2);
+    bool hasDialogue = const_cast<Renderer&>(renderer).drawDialogue(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, false);
+    if (!hasDialogue) {
+        renderer.drawRect(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, SDL_Color{35, 15, 15, 240});
+        renderer.drawOutline(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, SDL_Color{240, 60, 50, 255});
+        renderer.drawOutline(BANNER_X - 1, BANNER_Y - 1, BANNER_W + 2, BANNER_H + 2, SDL_Color{255, 160, 40, 180});
     }
+
+    // Warning '!' badge
+    renderer.drawRect(BANNER_X + 10, BANNER_Y + 7, 20, 22, SDL_Color{210, 40, 30, 255});
+    renderer.drawOutline(BANNER_X + 10, BANNER_Y + 7, 20, 22, SDL_Color{255, 220, 100, 255});
+    BitmapFont::drawChar(renderer, '!', BANNER_X + 17, BANNER_Y + 11, SDL_Color{255, 255, 255, 255}, 2);
+
+    // Feedback message text
+    int textX = BANNER_X + 38 + std::max(0, (BANNER_W - 48 - textW) / 2);
+    SDL_Color textCol = hasDialogue ? SDL_Color{60, 35, 25, 255} : SDL_Color{255, 240, 120, 255};
+    BitmapFont::drawText(renderer, m_feedbackMessage, textX, BANNER_Y + 12, textCol, 2);
 }

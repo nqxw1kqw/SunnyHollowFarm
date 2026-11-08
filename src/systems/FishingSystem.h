@@ -15,9 +15,15 @@ enum class FishingState {
     Bite      // Bite window active (~800 ms) with sparkle and "!" prompt
 };
 
+#include <functional>
+
 class FishingSystem {
 public:
+    using OnCatchFishCallback = std::function<void(int count)>;
+
     FishingSystem();
+
+    void setOnCatchFishCallback(OnCatchFishCallback cb) { m_onCatchFishCallback = cb; }
 
     // Cancel current fishing session immediately (e.g. on movement, modal open, or early scare)
     void cancel();
@@ -57,4 +63,5 @@ private:
     float m_injectedWaitDuration = -1.0f;
 
     std::mt19937 m_rng;
+    OnCatchFishCallback m_onCatchFishCallback;
 };

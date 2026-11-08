@@ -20,6 +20,15 @@
 #include "systems/AudioSystem.h"
 #include "systems/FishingSystem.h"
 #include "systems/ChickenSystem.h"
+#include "systems/StatsSystem.h"
+#include "ui/StatsUI.h"
+#include "ui/PauseUI.h"
+#include "ui/TitleUI.h"
+
+enum class GameState {
+    Title,
+    Playing
+};
 
 enum class Location {
     Farm,
@@ -81,6 +90,16 @@ public:
     FishingSystem& getFishingSystem() { return m_fishingSystem; }
     const ChickenSystem& getChickenSystem() const { return m_chickenSystem; }
     ChickenSystem& getChickenSystem() { return m_chickenSystem; }
+    const StatsSystem& getStatsSystem() const { return m_statsSystem; }
+    StatsSystem& getStatsSystem() { return m_statsSystem; }
+    const StatsUI& getStatsUI() const { return m_statsUI; }
+    StatsUI& getStatsUI() { return m_statsUI; }
+    const PauseUI& getPauseUI() const { return m_pauseUI; }
+    PauseUI& getPauseUI() { return m_pauseUI; }
+    const TitleUI& getTitleUI() const { return m_titleUI; }
+    TitleUI& getTitleUI() { return m_titleUI; }
+    GameState getGameState() const { return m_gameState; }
+    void setGameState(GameState state) { m_gameState = state; }
 
     Location getLocation() const { return m_location; }
     void setLocation(Location loc) { m_location = loc; }
@@ -98,6 +117,7 @@ public:
     bool saveGame(const std::string& filepath = "savegame.json") const;
     bool loadGame(const std::string& filepath = "savegame.json");
     void resetGame();
+    void pauseSaveNow();
 
     // Part B: Eat food for energy (Salad +25, Bread +35)
     bool eatSelectedItem();
@@ -149,6 +169,11 @@ private:
     ShopUI m_shopUI;
     FishingSystem m_fishingSystem;
     ChickenSystem m_chickenSystem;
+    StatsSystem m_statsSystem;
+    StatsUI m_statsUI;
+    PauseUI m_pauseUI;
+    TitleUI m_titleUI;
+    GameState m_gameState = GameState::Title;
 
     bool m_isRunning = false;
     bool m_smokeTestMode = false;

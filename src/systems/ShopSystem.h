@@ -21,6 +21,7 @@ class ShopSystem {
 public:
     using ChickenCountFn = std::function<int()>;
     using BuyChickenFn = std::function<bool()>;
+    using OnSellCallback = std::function<void(int goldEarned)>;
 
     ShopSystem() = default;
 
@@ -28,6 +29,9 @@ public:
     void setChickenHandler(ChickenCountFn countFn, BuyChickenFn buyFn) {
         m_chickenCountFn = countFn;
         m_buyChickenFn = buyFn;
+    }
+    void setOnSellCallback(OnSellCallback cb) {
+        m_onSellCallback = cb;
     }
     int getChickenCount() const {
         return m_chickenCountFn ? m_chickenCountFn() : 0;
@@ -60,4 +64,5 @@ private:
     std::vector<ItemType> m_buyerCatalog;
     ChickenCountFn m_chickenCountFn;
     BuyChickenFn m_buyChickenFn;
+    OnSellCallback m_onSellCallback;
 };

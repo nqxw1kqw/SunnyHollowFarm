@@ -20,10 +20,16 @@ struct Recipe {
 
 class AudioSystem;
 
+#include <functional>
+
 // Cooking system that parses recipes.txt, verifies ingredients, and executes cooking.
 class CookingSystem {
 public:
+    using OnCookSuccessCallback = std::function<void(int count)>;
+
     CookingSystem() = default;
+
+    void setOnCookSuccessCallback(OnCookSuccessCallback cb) { m_onCookSuccessCallback = cb; }
 
     // Parses recipes from the given file path (supporting relative path fallbacks).
     bool loadRecipes(const std::string& filePath = "assets/data/recipes.txt");
@@ -45,4 +51,5 @@ public:
 
 private:
     std::vector<Recipe> m_recipes;
+    OnCookSuccessCallback m_onCookSuccessCallback;
 };

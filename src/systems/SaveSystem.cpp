@@ -2,6 +2,7 @@
 #include "core/Game.h"
 #include "world/TileType.h"
 #include "systems/Weather.h"
+#include "systems/StatsSystem.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -345,7 +346,16 @@ bool SaveSystem::save(const Game& game, const std::string& filepath) {
         if (i + 1 < eggs.size()) ss << ",";
         ss << "\n";
     }
-    ss << "  ]\n";
+    ss << "  ],\n";
+
+    // Lifetime stats and earnings goal
+    const auto& stats = game.getStatsSystem();
+    ss << "  \"lifetime_earned_gold\": " << stats.getLifetimeEarnedGold() << ",\n";
+    ss << "  \"crops_harvested\": " << stats.getCropsHarvested() << ",\n";
+    ss << "  \"fish_caught\": " << stats.getFishCaught() << ",\n";
+    ss << "  \"eggs_collected\": " << stats.getEggsCollected() << ",\n";
+    ss << "  \"dishes_cooked\": " << stats.getDishesCooked() << ",\n";
+    ss << "  \"goal_reached\": " << (stats.isGoalReached() ? "true" : "false") << "\n";
     ss << "}\n";
 
     f << ss.str();
@@ -528,6 +538,28 @@ bool SaveSystem::load(Game& game, const std::string& filepath) {
             }
         }
     }
+
+    // 8. Restore lifetime stats and earnings goal
+    LifetimeStats stats;
+    if (const JsonValue* v = root.get("lifetime_earned_gold")) {
+        stats.lifetimeEarnedGold = v->asInt(0);
+    }
+    if (const JsonValue* v = root.get("crops_harvested")) {
+        stats.cropsHarvested = v->asInt(0);
+    }
+    if (const JsonValue* v = root.get("fish_caught")) {
+        stats.fishCaught = v->asInt(0);
+    }
+    if (const JsonValue* v = root.get("eggs_collected")) {
+        stats.eggsCollected = v->asInt(0);
+    }
+    if (const JsonValue* v = root.get("dishes_cooked")) {
+        stats.dishesCooked = v->asInt(0);
+    }
+    if (const JsonValue* v = root.get("goal_reached")) {
+        stats.goalReached = v->asBool(false);
+    }
+    game.getStatsSystem().setStats(stats);
 
     std::cout << "[SaveSystem] Game state successfully loaded from " << filepath << std::endl;
     return true;

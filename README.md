@@ -26,6 +26,12 @@ The save file uses standard JSON formatted with the following top-level keys:
 | `crop_field` | Array | Full state of farm plots, soil hydration, and planted crops. |
 | `chicken_count` | Integer | Total number of chickens owned on the farm (0 to 6). |
 | `ground_eggs` | Array | Coordinates `[{"x": int, "y": int}, ...]` of uncollected eggs lying in the chicken pen. |
+| `lifetime_earned_gold` | Integer | Cumulative gold earned across all sell transactions. |
+| `crops_harvested` | Integer | Total number of crops harvested. |
+| `fish_caught` | Integer | Total number of fish caught. |
+| `eggs_collected` | Integer | Total number of eggs gathered from the chicken pen. |
+| `dishes_cooked` | Integer | Total number of dishes successfully cooked. |
+| `goal_reached` | Boolean | True once lifetime earnings reached 1000G; prevents duplicate celebrations. |
 
 ## Eating Food for Energy
 
@@ -151,4 +157,75 @@ For standalone packaging or distribution, ensure the following runtime libraries
 - The farm's chicken count is serialized as `chicken_count` in `savegame.json`.
 - Ground egg positions are serialized under `ground_eggs` as an array of `{"x": int, "y": int}` coordinates in `savegame.json`.
 - Starting a new game starts with 0 chickens and 0 ground eggs. Loading restores both chickens and ground eggs exactly.
+
+## Title Screen System
+
+### Overview & Flow
+- **Boot Sequence:** The game boots into a title screen featuring a dimmed pastoral farm backdrop, wooden panel banner with the game title, subtitle, and an interactive menu.
+- **Menu Options:**
+  - **Continue:** Highlighted by default when `savegame.json` exists in the working directory. Selecting Continue loads the saved session directly. If no save exists, the Continue option is hidden, and New Game is highlighted.
+  - **New Game:** Starts a fresh session on Day 1 with 0 stats.
+    - **Overwrite Protection:** If `savegame.json` already exists when selecting New Game, a modal prompt appears:
+      `Overwrite save? Enter = yes, Esc = no`. Pressing **Enter** deletes the old save and launches Day 1; pressing **Esc** aborts back to the title menu.
+  - **Quit:** Gracefully terminates the application.
+- **Navigation Controls:** **Up / Down** arrow keys or **W / S** to move the selection cursor, **Enter** (or Space) to confirm.
+- **Headless Mode Bypass:** In `--smoke-test` and `--playtest` headless test execution, the title screen is automatically bypassed to maintain deterministic test harness runs.
+
+## Pause Menu Overlay
+
+### Overview & Controls
+- **Opening the Pause Menu (Key Esc):**
+  - Pressing **Esc** during gameplay opens the Pause menu overlay.
+  - If any gameplay modal is open (Inventory, Cooking, or Shop), **Esc** closes that modal first; pressing **Esc** again while free in the world opens the Pause menu.
+- **Options:**
+  - **Resume:** Closes the pause overlay and resumes active gameplay.
+  - **Save Now:** Immediately writes the current world and player state to `savegame.json` and displays an on-screen banner: `Saved!`.
+  - **View Stats:** Opens the Lifetime Statistics modal view.
+  - **Quit to Title:** Safely returns to the title screen without exiting the application.
+  - **Quit Game:** Cleanly exits the game.
+- **Navigation Controls:** **Up / Down** arrow keys or **W / S** to select, **Enter** to activate, and **Esc** to quickly resume.
+
+## Lifetime Statistics System
+
+### Tracked Statistics
+The farm records cumulative lifetime metrics that are persisted in `savegame.json` across sessions and reset to 0 only when starting a new game:
+- **Lifetime Earned Gold (`lifetime_earned_gold`):** Cumulative sum of all income earned from selling produce, fish, and eggs to Silas the Buyer NPC.
+- **Crops Harvested (`crops_harvested`):** Total count of ripe crops harvested from tilled plots.
+- **Fish Caught (`fish_caught`):** Total count of fish successfully caught at the pond.
+- **Eggs Collected (`eggs_collected`):** Total count of eggs gathered from the chicken pen.
+- **Dishes Cooked (`dishes_cooked`):** Total count of recipes successfully prepared at the stove.
+
+### Viewing Stats (Modal & Key T)
+- **Hotkeys:** Press **T** during gameplay (or select **View Stats** in the Pause Menu) to view the Stats modal.
+- **Displayed Metrics:**
+  - **Day:** Current in-game day counter.
+  - **Wallet:** Current Gold balance.
+  - **Lifetime Earned:** Total accumulated gold from all sales.
+  - **Crops Harvested:** Total crops harvested to date.
+  - **Fish Caught:** Total fish caught to date.
+  - **Eggs Collected:** Total eggs collected to date.
+  - **Dishes Cooked:** Total dishes prepared to date.
+  - **Chickens Owned:** Number of chickens currently in the pen.
+- Press **Esc** or **Enter** to close the statistics modal.
+
+## Farm Earnings Goal (1000G Milestone)
+
+### Celebration & Persistence
+- **Milestone Trigger:** As soon as `lifetime_earned_gold` reaches or exceeds **1000G**, the game immediately dispatches a celebratory achievement banner across the screen:
+  `FARM GOAL REACHED: 1000G lifetime earnings!`
+- **One-Time Event:** Upon reaching the goal, `goal_reached` is set to `true` and saved to `savegame.json`. It will never fire a second time, including across subsequent saves and loads.
+
+## Controls Summary
+
+| Key / Input | Action |
+|---|---|
+| **W, A, S, D / Arrow Keys** | Move character / Navigate menus and inventory |
+| **Space / E** | Interact with objects (Till, Water, Plant, Harvest, Fish, Collect Eggs, Cook, Talk to NPCs) |
+| **Number Keys 1 - 8** | Select active Hotbar tool / seed / item slot |
+| **I / Tab** | Toggle Inventory modal |
+| **T** | View Lifetime Statistics modal |
+| **F** | Eat highlighted food item (Salad, Bread, Omelette) to restore Energy |
+| **Esc** | Close open modal / Open Pause Menu (Resume, Save Now, View Stats, Quit to Title, Quit Game) |
+| **M** | Toggle Audio Mute (persisted in save) |
+| **F9** | Reset world to fresh Day 1 state (deletes save) |
 

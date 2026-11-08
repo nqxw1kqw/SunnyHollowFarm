@@ -122,17 +122,32 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
         saveGame();
     });
 
+    // Wire lifetime statistics increment callbacks
+    m_shopSystem.setOnSellCallback([this](int goldEarned) {
+        m_statsSystem.recordSale(goldEarned, &m_hud);
+    });
+    m_farmSystem.setOnHarvestCallback([this](int count) {
+        m_statsSystem.recordHarvest(count);
+    });
+    m_fishingSystem.setOnCatchFishCallback([this](int count) {
+        m_statsSystem.recordCatchFish(count);
+    });
+    m_chickenSystem.setOnEggCollectedCallback([this](int count) {
+        m_statsSystem.recordEggCollected(count);
+    });
+    m_cookingSystem.setOnCookSuccessCallback([this](int count) {
+        m_statsSystem.recordDishCooked(count);
+    });
+
     initRainParticles();
 
-    // On launch, load the save if one exists; otherwise start the standard new game.
-    if (!m_smokeTestMode && !m_playtestMode) {
-        if (SaveSystem::exists()) {
-            if (loadGame()) {
-                std::cout << "[SaveSystem] Loaded existing savegame.json on launch." << std::endl;
-            } else {
-                std::cout << "[SaveSystem] Failed to load existing savegame.json; starting fresh standard new game." << std::endl;
-            }
-        }
+    // In --smoke-test / --playtest modes the title is bypassed (headless runs unchanged).
+    // In normal gameplay, the game boots into the title screen.
+    if (m_smokeTestMode || m_playtestMode) {
+        m_gameState = GameState::Playing;
+    } else {
+        m_gameState = GameState::Title;
+        m_titleUI.init(SaveSystem::exists());
     }
 
     m_isRunning = true;
@@ -187,7 +202,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 157) {
+                if (m_smokeTestFrames >= 158) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -305,13 +320,20 @@ void Game::resetGame() {
     m_interiorMap.initInterior();
     m_farmSystem.clearCrops();
     m_chickenSystem.reset();
+    m_statsSystem.reset();
     m_audio.setMuted(false);
     m_fadePhase = FadePhase::None;
     m_transitionAction = TransitionAction::None;
     m_fadeTimer = 0.0f;
     m_fishingSystem.cancel();
     m_hud.showFeedback("RESET TO FRESH DAY 1", 3.0f);
-    std::cout << "[Reset] F9 pressed: deleted save file and restarted at fresh Day 1." << std::endl;
+    std::cout << "[Reset] Reset to fresh Day 1 (save removed, stats zeroed)." << std::endl;
+}
+
+void Game::pauseSaveNow() {
+    saveGame();
+    m_hud.showFeedback("Saved!", 2.0f);
+    std::cout << "[Pause] Save Now: wrote savegame.json immediately." << std::endl;
 }
 
 bool Game::eatSelectedItem() {
@@ -380,8 +402,64 @@ bool Game::tryStartFishing() {
 }
 
 void Game::handleInput() {
+    if (m_gameState == GameState::Title) {
+        TitleAction action = m_titleUI.handleInput(m_input, &m_audio);
+        if (action == TitleAction::Continue) {
+            if (loadGame()) {
+                std::cout << "[Title] Continued existing game from savegame.json." << std::endl;
+            } else {
+                std::cout << "[Title] Failed to load savegame.json; starting fresh game." << std::endl;
+                resetGame();
+            }
+            m_gameState = GameState::Playing;
+        } else if (action == TitleAction::NewGame) {
+            resetGame();
+            m_gameState = GameState::Playing;
+            std::cout << "[Title] Started fresh new game." << std::endl;
+        } else if (action == TitleAction::Quit) {
+            m_isRunning = false;
+            std::cout << "[Title] Quit requested from title screen." << std::endl;
+        }
+        return;
+    }
+
     // Input is locked during screen transition fades
     if (isInputLocked()) {
+        return;
+    }
+
+    // When pause overlay is open:
+    if (m_pauseUI.isOpen()) {
+        if (m_statsUI.isOpen()) {
+            m_statsUI.handleInput(m_input, &m_audio);
+            return;
+        }
+
+        PauseAction action = m_pauseUI.handleInput(m_input, &m_audio);
+        if (action == PauseAction::Resume) {
+            // Already closed inside PauseUI
+        } else if (action == PauseAction::SaveNow) {
+            pauseSaveNow();
+        } else if (action == PauseAction::ViewStats) {
+            m_statsUI.open(true);
+            m_audio.playSFX(SFX::UIOpen);
+        } else if (action == PauseAction::QuitToTitle) {
+            m_pauseUI.close();
+            m_statsUI.close();
+            m_fishingSystem.cancel();
+            m_gameState = GameState::Title;
+            m_titleUI.open(SaveSystem::exists());
+            std::cout << "[Pause] Returned to title screen." << std::endl;
+        } else if (action == PauseAction::QuitGame) {
+            m_isRunning = false;
+            std::cout << "[Pause] Quit game requested." << std::endl;
+        }
+        return;
+    }
+
+    // When Stats view is open during gameplay (opened via key T):
+    if (m_statsUI.isOpen()) {
+        m_statsUI.handleInput(m_input, &m_audio);
         return;
     }
 
@@ -432,6 +510,26 @@ void Game::handleInput() {
     // When the shop UI modal is open, pass input to it and pause world interaction
     if (m_shopUI.isOpen()) {
         m_shopUI.handleInput(m_input, m_inventory, m_shopSystem, &m_hud, &m_audio);
+        return;
+    }
+
+    // ESC opens pause overlay when no shop/cooking/inventory modal is open
+    if (m_input.isKeyPressed(SDL_SCANCODE_ESCAPE)) {
+        if (m_fishingSystem.isFishing()) {
+            m_fishingSystem.cancel();
+        }
+        m_pauseUI.open();
+        m_audio.playSFX(SFX::UIOpen);
+        return;
+    }
+
+    // Key T opens Stats view during gameplay
+    if (m_input.isKeyPressed(SDL_SCANCODE_T)) {
+        if (m_fishingSystem.isFishing()) {
+            m_fishingSystem.cancel();
+        }
+        m_statsUI.open(false);
+        m_audio.playSFX(SFX::UIOpen);
         return;
     }
 
@@ -596,8 +694,18 @@ void Game::handleInput() {
 }
 
 void Game::update(float dt) {
+    if (m_gameState == GameState::Title) {
+        m_map.update(dt);
+        return;
+    }
+
     // Update on-screen feedback timer
     m_hud.update(dt);
+
+    // If pause overlay or stats view is open, freeze world simulation
+    if (m_pauseUI.isOpen() || m_statsUI.isOpen()) {
+        return;
+    }
 
     // Screen transition fade update (~300 ms out + 300 ms in, through black)
     updateTransition(dt);
@@ -1569,6 +1677,218 @@ void Game::update(float dt) {
             }
 
             std::cout << "[Smoke Test] Chicken system verified: buy chicken (-100G, count +1), cap refusal at 6 with no charge, forced egg spawn overnight, collect egg with inventory capacity rule, sell egg at 15G, cook & eat Omelette, pen fence containment, and save/load persistence!" << std::endl;
+        } else if (m_smokeTestFrames == 157) {
+            // ROUND 6 VERIFICATIONS:
+            // 1. Title state logic headless (save-exists detection)
+            {
+                TitleUI title;
+                title.init(false);
+                assert(title.getOptionCount() == 2 && "Title has 2 options when no save exists (New Game, Quit)");
+
+                // Select option 0: New Game (when no save exists -> starts directly without overwrite prompt)
+                title.setSelectedIndex(0);
+                Input testInputEnter;
+                testInputEnter.setKeyPressed(SDL_SCANCODE_RETURN, true);
+                TitleAction actNewGameNoSave = title.handleInput(testInputEnter);
+                assert(actNewGameNoSave == TitleAction::NewGame && "New Game triggers immediately without prompt when no save exists");
+                assert(!title.isConfirmingOverwrite());
+
+                // Select option 1: Quit
+                title.setSelectedIndex(1);
+                TitleAction actQuitNoSave = title.handleInput(testInputEnter);
+                assert(actQuitNoSave == TitleAction::Quit);
+
+                // Now simulate save existing
+                title.refreshSaveExists(true);
+                assert(title.getOptionCount() == 3 && "Title has 3 options when save exists (Continue, New Game, Quit)");
+
+                // Select option 0: Continue
+                title.setSelectedIndex(0);
+                TitleAction actContinue = title.handleInput(testInputEnter);
+                assert(actContinue == TitleAction::Continue && "Selecting Continue triggers Continue action");
+
+                // Select option 1: New Game (when save exists -> asks overwrite confirmation)
+                title.setSelectedIndex(1);
+                TitleAction actNewGameWithSave = title.handleInput(testInputEnter);
+                assert(actNewGameWithSave == TitleAction::None && "New Game with save must not launch immediately");
+                assert(title.isConfirmingOverwrite() && "New Game with save prompts 'Overwrite save? Enter = yes, Esc = no'");
+
+                // Esc cancels overwrite prompt
+                Input testInputEsc;
+                testInputEsc.setKeyPressed(SDL_SCANCODE_ESCAPE, true);
+                TitleAction actCancel = title.handleInput(testInputEsc);
+                assert(actCancel == TitleAction::None && "Esc cancels overwrite prompt");
+                assert(!title.isConfirmingOverwrite() && "Prompt closed on Esc");
+
+                // New Game again -> Enter confirms overwrite
+                title.setSelectedIndex(1);
+                title.handleInput(testInputEnter);
+                assert(title.isConfirmingOverwrite());
+                TitleAction actConfirmed = title.handleInput(testInputEnter);
+                assert(actConfirmed == TitleAction::NewGame && "Enter confirms overwrite and starts New Game");
+                assert(!title.isConfirmingOverwrite());
+
+                std::cout << "[Smoke Test] Title screen state logic verified: save-exists detection (3 vs 2 options), New Game overwrite confirmation prompt, and Esc cancellation!" << std::endl;
+            }
+
+            // 2. New Game reset zeroes stats
+            {
+                m_statsSystem.setLifetimeEarnedGold(500);
+                m_statsSystem.setCropsHarvested(10);
+                m_statsSystem.setFishCaught(4);
+                m_statsSystem.setEggsCollected(3);
+                m_statsSystem.setDishesCooked(2);
+                m_statsSystem.setGoalReached(true);
+
+                resetGame();
+
+                assert(m_statsSystem.getLifetimeEarnedGold() == 0 && "Reset zeroes lifetime_earned_gold");
+                assert(m_statsSystem.getCropsHarvested() == 0 && "Reset zeroes crops_harvested");
+                assert(m_statsSystem.getFishCaught() == 0 && "Reset zeroes fish_caught");
+                assert(m_statsSystem.getEggsCollected() == 0 && "Reset zeroes eggs_collected");
+                assert(m_statsSystem.getDishesCooked() == 0 && "Reset zeroes dishes_cooked");
+                assert(!m_statsSystem.isGoalReached() && "Reset clears goal_reached");
+
+                std::cout << "[Smoke Test] New Game reset verified: all lifetime counters zeroed and goal cleared!" << std::endl;
+            }
+
+            // 3. Each counter increments on its event
+            {
+                m_statsSystem.reset();
+
+                // (a) Harvest event
+                assert(m_statsSystem.getCropsHarvested() == 0);
+                m_map.setTileType(5, 5, TileType::WateredSoil);
+                m_farmSystem.clearCrops();
+                m_farmSystem.addCrop(Crop(5, 5, ItemType::Tomato, CropStage::Harvest));
+                m_inventory.clear();
+                m_player.setEnergy(50);
+                bool harvested = m_farmSystem.harvest(5, 5, m_map, m_inventory, m_player, &m_hud);
+                assert(harvested && "Harvest mature crop succeeds");
+                assert(m_statsSystem.getCropsHarvested() == 1 && "crops_harvested incremented on harvest event");
+
+                // (b) Fish caught event
+                assert(m_statsSystem.getFishCaught() == 0);
+                m_fishingSystem.setNextWaitDuration(2.0f);
+                m_player.setEnergy(50);
+                m_fishingSystem.startFishing(16, 11, m_player, &m_hud, &m_audio);
+                m_fishingSystem.update(2.05f, &m_hud);
+                assert(m_fishingSystem.getState() == FishingState::Bite);
+                bool caught = m_fishingSystem.handleActionInput(m_inventory, &m_hud, &m_audio);
+                assert(caught && "Caught fish succeeds");
+                assert(m_statsSystem.getFishCaught() == 1 && "fish_caught incremented on catch event");
+
+                // (c) Egg collected event
+                assert(m_statsSystem.getEggsCollected() == 0);
+                m_chickenSystem.clearGroundEggs();
+                m_chickenSystem.addGroundEgg(2, 11);
+                bool collected = m_chickenSystem.collectEgg(2, 11, m_inventory, &m_hud, &m_audio);
+                assert(collected && "Collected egg succeeds");
+                assert(m_statsSystem.getEggsCollected() == 1 && "eggs_collected incremented on egg collect event");
+
+                // (d) Dishes cooked event
+                assert(m_statsSystem.getDishesCooked() == 0);
+                m_inventory.addItem(ItemType::Tomato, 2);
+                bool cooked = m_cookingSystem.cook(ItemType::Salad, m_inventory, &m_hud, &m_audio);
+                assert(cooked && "Cooking Salad succeeds");
+                assert(m_statsSystem.getDishesCooked() == 1 && "dishes_cooked incremented on cook event");
+
+                // (e) Sell transactions event
+                assert(m_statsSystem.getLifetimeEarnedGold() == 0);
+                assert(m_inventory.getItemCount(ItemType::Salad) == 1);
+                bool sold = m_shopSystem.sellItem(ItemType::Salad, 1, m_inventory, &m_hud, &m_audio);
+                assert(sold && "Selling Salad succeeds");
+                assert(m_statsSystem.getLifetimeEarnedGold() == 40 && "lifetime_earned_gold incremented by sell income (+40G)");
+
+                std::cout << "[Smoke Test] Event counters verified: harvest (+1 crop), catch (+1 fish), collect (+1 egg), cook (+1 dish), sell (+40G earned)!" << std::endl;
+            }
+
+            // 4. Earnings goal fires exactly once at 1000G crossing and persists across save/load
+            {
+                m_statsSystem.reset();
+                m_statsSystem.setLifetimeEarnedGold(950);
+                assert(!m_statsSystem.isGoalReached());
+                m_hud.showFeedback("", 0.0f);
+
+                // Add 60G -> 1010G (crosses 1000G threshold)
+                m_statsSystem.recordSale(60, &m_hud);
+                assert(m_statsSystem.getLifetimeEarnedGold() == 1010);
+                assert(m_statsSystem.isGoalReached() && "Goal marked reached at crossing");
+                assert(m_hud.getActiveFeedback() == "FARM GOAL REACHED: 1000G lifetime earnings!" && "Celebration banner fired on crossing");
+
+                // Earn more gold -> goal does not fire again
+                m_hud.showFeedback("DIFFERENT BANNER", 2.0f);
+                m_statsSystem.recordSale(50, &m_hud);
+                assert(m_statsSystem.getLifetimeEarnedGold() == 1060);
+                assert(m_statsSystem.isGoalReached());
+                assert(m_hud.getActiveFeedback() != "FARM GOAL REACHED: 1000G lifetime earnings!" && "Goal celebration never fires a second time");
+
+                // Persists across save/load
+                const std::string goalSaveFile = "smoke_goal_save.json";
+                SaveSystem::save(*this, goalSaveFile);
+                m_statsSystem.reset();
+                assert(!m_statsSystem.isGoalReached());
+                SaveSystem::load(*this, goalSaveFile);
+                assert(m_statsSystem.getLifetimeEarnedGold() == 1060);
+                assert(m_statsSystem.isGoalReached() && "goal_reached persists across save/load cycle");
+
+                // Further sales after loading still do not re-trigger goal
+                m_hud.showFeedback("OTHER BANNER", 2.0f);
+                m_statsSystem.recordSale(100, &m_hud);
+                assert(m_hud.getActiveFeedback() != "FARM GOAL REACHED: 1000G lifetime earnings!" && "Goal never fires after being loaded as reached");
+                SaveSystem::removeSave(goalSaveFile);
+
+                std::cout << "[Smoke Test] Earnings goal verified: one-time celebration banner fired at 1000G crossing, goal_reached marked true, and persists across save/load without re-triggering!" << std::endl;
+            }
+
+            // 5. Pause Save Now writes a loadable file
+            {
+                SaveSystem::removeSave("savegame.json");
+                assert(!SaveSystem::exists("savegame.json"));
+
+                pauseSaveNow();
+
+                assert(SaveSystem::exists("savegame.json") && "pauseSaveNow wrote savegame.json");
+                assert(m_hud.getActiveFeedback() == "Saved!" && "Saved! feedback banner displayed");
+
+                bool loadOk = SaveSystem::load(*this, "savegame.json");
+                assert(loadOk && "File written by Save Now is valid and loadable");
+                SaveSystem::removeSave("savegame.json");
+
+                std::cout << "[Smoke Test] Pause Save Now verified: wrote loadable savegame.json with 'Saved!' banner!" << std::endl;
+            }
+
+            // 6. Stats survive save/load
+            {
+                const std::string statsSaveFile = "smoke_stats_save.json";
+                LifetimeStats testStats;
+                testStats.lifetimeEarnedGold = 1450;
+                testStats.cropsHarvested = 18;
+                testStats.fishCaught = 9;
+                testStats.eggsCollected = 7;
+                testStats.dishesCooked = 11;
+                testStats.goalReached = true;
+                m_statsSystem.setStats(testStats);
+
+                bool saved = SaveSystem::save(*this, statsSaveFile);
+                assert(saved && "SaveSystem::save succeeded");
+
+                m_statsSystem.reset();
+                assert(m_statsSystem.getLifetimeEarnedGold() == 0);
+
+                bool loaded = SaveSystem::load(*this, statsSaveFile);
+                assert(loaded && "SaveSystem::load succeeded");
+
+                assert(m_statsSystem.getLifetimeEarnedGold() == 1450 && "lifetime_earned_gold restored");
+                assert(m_statsSystem.getCropsHarvested() == 18 && "crops_harvested restored");
+                assert(m_statsSystem.getFishCaught() == 9 && "fish_caught restored");
+                assert(m_statsSystem.getEggsCollected() == 7 && "eggs_collected restored");
+                assert(m_statsSystem.getDishesCooked() == 11 && "dishes_cooked restored");
+                assert(m_statsSystem.isGoalReached() == true && "goal_reached restored");
+
+                SaveSystem::removeSave(statsSaveFile);
+                std::cout << "[Smoke Test] Stats save/load survival verified: all 5 counters and goal flag restored exactly!" << std::endl;
+            }
         }
     }
 }
@@ -1613,6 +1933,17 @@ void Game::renderRainParticles() {
 void Game::render() {
     // Clear screen with a neutral dark tone
     m_renderer.clear(SDL_Color{20, 20, 20, 255});
+
+    if (m_gameState == GameState::Title) {
+        // Render terrain tile map backdrop
+        m_map.render(m_renderer);
+        // Dimmed backdrop overlay
+        m_renderer.drawRect(0, 0, Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, SDL_Color{0, 0, 0, 160});
+        // Title UI panel and menu
+        m_titleUI.render(m_renderer);
+        m_renderer.present();
+        return;
+    }
 
     if (m_location == Location::Farm) {
         // 1. Render terrain tile map
@@ -1761,7 +2092,16 @@ void Game::render() {
         m_shopUI.render(m_renderer, m_inventory, m_shopSystem);
     }
 
-    // 9. Screen transition fade overlay (through black)
+    // 9. Render Pause Menu overlay and Stats View modal
+    if (m_pauseUI.isOpen()) {
+        m_pauseUI.render(m_renderer);
+        m_hud.renderFeedbackBanner(m_renderer);
+    }
+    if (m_statsUI.isOpen()) {
+        m_statsUI.render(m_renderer, m_timeSystem.getDay(), m_inventory.getMoney(), m_statsSystem, m_chickenSystem.getChickenCount());
+    }
+
+    // 10. Screen transition fade overlay (through black)
     if (m_fadePhase == FadePhase::FadeOut) {
         float progress = std::clamp(m_fadeTimer / FADE_OUT_DURATION, 0.0f, 1.0f);
         Uint8 alpha = static_cast<Uint8>(std::round(progress * 255.0f));
@@ -2041,6 +2381,9 @@ void Game::updatePlaytest(float dt) {
         bool s4 = m_shopSystem.sellItem(ItemType::Wheat, 1, m_inventory, &m_hud);
         assert(s4 && m_inventory.getMoney() == 169 && m_inventory.getItemCount(ItemType::Wheat) == 0);
 
+        // Verify lifetime earnings equals sum of run's sales (40 + 50 + 20 + 14 = 124G)
+        assert(m_statsSystem.getLifetimeEarnedGold() == 124 && "Lifetime earned gold must equal sum of Step 8 sales (124G)");
+
         m_shopUI.close();
         assert(!m_shopUI.isOpen());
         assert(m_timeSystem.getDay() == 4);
@@ -2313,6 +2656,9 @@ void Game::updatePlaytest(float dt) {
         assert(m_inventory.getItemCount(ItemType::GrilledFish) == 0 && "Grilled Fish consumed from inventory");
         assert(m_inventory.getMoney() == 174 && "Wallet must be exactly 119 + 55 = 174G");
 
+        // Verify lifetime earnings equals sum of run's sales (124 + 30 + 55 = 209G)
+        assert(m_statsSystem.getLifetimeEarnedGold() == 209 && "Lifetime earned gold must equal sum of Step 8 and Step 16 sales (209G)");
+
         std::cout << "[PASS] Step 16: Caught 2x Fish, cooked 1x Grilled Fish, and sold Fish (30G) & Grilled Fish (55G) to Buyer (Wallet: 174G)" << std::endl;
     } else if (m_playtestFrames == 170) {
         // Step 17: Buy Chicken from Seller, sleep overnight, collect egg from pen, and sell to Buyer NPC
@@ -2360,6 +2706,9 @@ void Game::updatePlaytest(float dt) {
         assert(soldEgg && "Selling Egg to Buyer succeeds");
         assert(m_inventory.getItemCount(ItemType::Egg) == 0 && "Egg consumed from inventory");
         assert(m_inventory.getMoney() == 89 && "Wallet must be exactly 74 + 15 = 89G");
+
+        // Verify lifetime earnings equals sum of all run's sales (209 + 15 = 224G)
+        assert(m_statsSystem.getLifetimeEarnedGold() == 224 && "Lifetime earned gold must equal total playthrough sales (224G)");
 
         std::cout << "[PASS] Step 17: Bought 1x Chicken (-100G), forced overnight egg, collected from pen, and sold Egg (+15G) to Buyer (Wallet: 89G, Chickens: 1, Day: 7)" << std::endl;
     } else if (m_playtestFrames >= 180) {

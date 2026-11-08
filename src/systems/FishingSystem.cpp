@@ -79,6 +79,9 @@ bool FishingSystem::handleActionInput(Inventory& inventory, HUD* hud, AudioSyste
         // Catch 1 Fish
         inventory.addItem(ItemType::Fish, 1);
         m_state = FishingState::None;
+        if (m_onCatchFishCallback) {
+            m_onCatchFishCallback(1);
+        }
         if (audio) {
             audio->playSFX(SFX::Harvest);
         }

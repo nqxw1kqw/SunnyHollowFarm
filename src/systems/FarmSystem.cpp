@@ -171,6 +171,9 @@ bool FarmSystem::harvest(int tileX, int tileY, Map& map, Inventory& inventory, P
     m_crops.erase(it);
     inventory.addItem(harvestItem, 1);
     player.consumeEnergy(Config::ENERGY_COST_HARVEST);
+    if (m_onHarvestCallback) {
+        m_onHarvestCallback(1);
+    }
     if (audio) {
         audio->playSFX(SFX::Harvest);
     }

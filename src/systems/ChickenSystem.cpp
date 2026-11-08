@@ -143,6 +143,9 @@ bool ChickenSystem::collectEgg(int tileX, int tileY, Inventory& inventory, HUD* 
 
     m_groundEggs.erase(it);
     inventory.addItem(ItemType::Egg, 1);
+    if (m_onEggCollectedCallback) {
+        m_onEggCollectedCallback(1);
+    }
 
     std::cout << "[ChickenSystem] Collected 1x Egg from (" << tileX << ", " << tileY
               << ") [Total Eggs in bag: " << inventory.getItemCount(ItemType::Egg) << "]" << std::endl;

@@ -29,6 +29,9 @@ public:
     // Renders all HUD components including day counter, weather indicator, and bottom hotbar.
     void render(Renderer& renderer, const Inventory& inventory, const Player& player, int currentDay = 1, Weather weather = Weather::Sunny) const;
 
+    // Renders only the top feedback banner (if active)
+    void renderFeedbackBanner(Renderer& renderer) const;
+
     // Checks if a feedback banner is currently visible.
     bool hasActiveFeedback() const { return m_feedbackTimer > 0.0f; }
     const std::string& getActiveFeedback() const { return m_feedbackMessage; }
