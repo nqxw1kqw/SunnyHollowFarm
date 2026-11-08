@@ -1,0 +1,122 @@
+[
+  {
+    "filename": "ui_panel.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\n\nSubject: one square flat UI panel, plain OPAQUE warm cream center, milk brown narrow rim, dark brown one logical pixel outline for a final 96x96 asset. Square corners. Fill almost whole canvas. For reliable background extraction ONLY: render outside the panel as uniform vivid magenta (#FF00FF) that will be removed in processing; all cream panel interior must stay opaque. Flat solid fills only, no gradients, shadows or transparent holes. Rim 2 logical pixels total including 1px outer outline; remaining 92x92 logical pixels uniform cream. No text.",
+    "crop": [
+      30,
+      30,
+      1224,
+      1224
+    ],
+    "final_size": [
+      96,
+      96
+    ],
+    "processing": "Remove magenta background (r>180,b>180,g<100), crop visible bounds, nearest-neighbor to 94x94, center on transparent 96x96, shared palette without dithering, alpha threshold 128."
+  },
+  {
+    "filename": "ui_button.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\n\nSubject: one horizontal wooden/cream button plate, aspect ratio 3:1. Plain cream center, milk-brown wooden rim and simple dark brown outline, square subtly stepped corners, no ornament, ready for nine-slice. Logical border 1px and rim within 3px at final size.\nGenerate enlarged pixel art, single subject centered with small transparent surrounding margin. Final asset 96x32. The subject's own outline is required; no outer canvas frame.",
+    "crop": [
+      40,
+      78,
+      2132,
+      643
+    ],
+    "final_size": [
+      96,
+      32
+    ],
+    "processing": "Crop to recorded alpha>=128 bounds; resize directly to final_size with Image.Resampling.NEAREST; quantize RGB to process_assets.py PALETTE without dithering; threshold alpha at 128."
+  },
+  {
+    "filename": "ui_button_hover.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\n\nEdit the reference button: change ONLY the cream/wood colors to a sunny-yellow highlighted hover tint. Preserve exact silhouette, border geometry, proportions, blank center, transparency, lighting and pixel grid. Single centered button, no text.",
+    "crop": [
+      40,
+      80,
+      2133,
+      643
+    ],
+    "final_size": [
+      96,
+      32
+    ],
+    "processing": "Crop to recorded alpha>=128 bounds; resize directly to final_size with Image.Resampling.NEAREST; quantize RGB to process_assets.py PALETTE without dithering; threshold alpha at 128. Copy final ui_button.png alpha mask to keep hover silhouette identical (4 edge pixels)."
+  },
+  {
+    "filename": "ui_dialogue.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\n\nSubject: one wide cream dialogue/prompt box, aspect ratio 2:1, with a small triangular tail at bottom center. Large entirely plain cream center, milk-brown rim and dark brown outline. Keep entire tail in bottom 8 logical pixels, main rectangular body in upper 40 pixels. Simple corners and 3 logical pixel rim suitable for nine-slice.\nGenerate enlarged pixel art, single subject centered with small transparent surrounding margin. Final asset 96x48. The subject's own outline is required; no outer canvas frame.",
+    "crop": [
+      39,
+      57,
+      1735,
+      838
+    ],
+    "final_size": [
+      96,
+      48
+    ],
+    "processing": "Crop to recorded alpha>=128 bounds; resize directly to final_size with Image.Resampling.NEAREST; quantize RGB to process_assets.py PALETTE without dithering; threshold alpha at 128."
+  },
+  {
+    "filename": "ui_cursor.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\n\nSubject: one small cream gloved hand selection cursor pointing RIGHT, simple readable silhouette and dark brown outline.\nGenerate enlarged pixel art, single subject centered with small transparent surrounding margin. Final asset 32x32. The subject's own outline is required; no outer canvas frame.",
+    "crop": [
+      190,
+      241,
+      1120,
+      1021
+    ],
+    "final_size": [
+      32,
+      32
+    ],
+    "processing": "Crop to recorded alpha>=128 bounds; resize directly to final_size with Image.Resampling.NEAREST; quantize RGB to process_assets.py PALETTE without dithering; threshold alpha at 128."
+  },
+  {
+    "filename": "ui_shop_sign.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\n\nSubject: one horizontal hanging wooden shop sign, aspect ratio 2:1, two short hanging loops at top and a small golden coin emblem centered on wooden plate. Absolutely no text or letters.\nGenerate enlarged pixel art, single subject centered with small transparent margin. Final asset 64x32. No outer canvas frame.",
+    "crop": [
+      88,
+      79,
+      1686,
+      810
+    ],
+    "final_size": [
+      64,
+      32
+    ],
+    "processing": "Crop to recorded alpha>=128 bounds; resize directly to final_size with Image.Resampling.NEAREST; quantize RGB to process_assets.py PALETTE without dithering; threshold alpha at 128."
+  },
+  {
+    "filename": "ui_cooking_icon.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\n\nSubject: one cozy cooking pot icon for cooking UI header, dark brown pot with cream rim, two small handles and lid, tiny warm highlight. Bold simple readable silhouette.\nGenerate enlarged pixel art, single subject centered with small transparent surrounding margin. Final asset 32x32. Strong stepped pixels, limited flat colors, no outer canvas frame.",
+    "crop": [
+      54,
+      181,
+      1207,
+      1104
+    ],
+    "final_size": [
+      32,
+      32
+    ],
+    "processing": "Crop to recorded alpha>=128 bounds; resize directly to final_size with Image.Resampling.NEAREST; quantize RGB to process_assets.py PALETTE without dithering; threshold alpha at 128."
+  },
+  {
+    "filename": "ui_sleep_icon.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\n\nSubject: one crescent moon with two small stars grouped closely as a single sleep prompt icon. Sunny golden yellow crescent and warm cream stars, dark brown outlines, simple readable silhouette.\nGenerate enlarged pixel art, single subject centered with small transparent surrounding margin. Final asset 32x32. Strong stepped pixels, limited flat colors, no outer canvas frame.",
+    "crop": [
+      167,
+      188,
+      1048,
+      1141
+    ],
+    "final_size": [
+      32,
+      32
+    ],
+    "processing": "Crop to recorded alpha>=128 bounds; resize directly to final_size with Image.Resampling.NEAREST; quantize RGB to process_assets.py PALETTE without dithering; threshold alpha at 128."
+  }
+]
