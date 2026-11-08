@@ -3,3 +3,5 @@ cmake-build-*/
 *.swp
 *~
 .DS_Store
+savegame.json
+smoke_save.json
