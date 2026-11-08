@@ -1,3 +1,4 @@
+#include <cmath>
 #include "world/Map.h"
 #include <algorithm>
 
