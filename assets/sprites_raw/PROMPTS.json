@@ -1,0 +1,102 @@
+[
+  {
+    "filename": "player_sheet.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a cheerful farmer with a straw hat and blue overalls, sprite sheet with 12 frames arranged in 4 rows (down, left, right, up) and 3 columns (walk cycle: neutral, left step, right step), each frame 32x32 logical pixels, frames evenly spaced on a transparent background. Exactly 3 columns and 4 rows; each cell same size, no gutters, no labels. Generate large at 768x1024."
+  },
+  {
+    "filename": "npc_seller.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a friendly seed and supply seller wearing a cream apron over an orange shirt, standing facing down, full body, 32x32 logical pixel sprite, generate large."
+  },
+  {
+    "filename": "npc_buyer.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a friendly crop buyer wearing a straw hat and earthy green vest, standing facing down, full body, 32x32 logical pixel sprite, generate large."
+  },
+  {
+    "filename": "tiles_ground.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a ground tile sheet, exactly 2 columns by 2 rows of equal square cells touching with no gaps: upper left dry brown soil, upper right tilled brown soil with furrows, lower left lush green grass, lower right blue water. Each tile completely fills its square cell to all edges, flat ground surface without perspective sides. 32x32 logical pixels per cell, generate large. No labels."
+  },
+  {
+    "filename": "tiles_fence.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a fence tile sheet, exactly 2 columns by 1 row of equal square cells: left a horizontal wooden farm fence with two rails, right a vertical wooden farm fence with two rails. Transparent space around fence, 32x32 logical pixels per cell, no gutters or labels. Generate large in 2:1 aspect."
+  },
+  {
+    "filename": "tomato_stage1.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a tiny planted tomato seed visible in a small mound of brown earth, earliest crop stage, centered near bottom of a 32x32 logical pixel cell, generous transparent space above, generate large."
+  },
+  {
+    "filename": "tomato_stage2.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a tiny tomato sprout with two green leaves rising from a small mound of brown earth, centered near bottom of a 32x32 logical pixel cell, generous transparent space above, generate large."
+  },
+  {
+    "filename": "tomato_stage3.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a growing tomato plant with a green stem and several leaves, no fruit yet, rooted in a small mound of brown earth, centered in a 32x32 logical pixel cell, generate large."
+  },
+  {
+    "filename": "tomato_stage4.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a mature tomato plant with green leaves and several ripe red tomatoes ready for harvest, rooted in a small mound of brown earth, centered in a 32x32 logical pixel cell, generate large."
+  },
+  {
+    "filename": "item_tomato.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a single ripe red tomato with a small green leaf on top, centered, item icon."
+  },
+  {
+    "filename": "item_carrot.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a single orange carrot with a small tuft of green leaves, centered, 32x32 logical pixel item icon, generate large."
+  },
+  {
+    "filename": "item_wheat.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a small bundle of golden yellow wheat tied with brown string, centered, 32x32 logical pixel item icon, generate large."
+  },
+  {
+    "filename": "item_salad.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a cream plate of fresh leafy salad with slices of red tomato and orange carrot, centered, 32x32 logical pixel item icon, generate large."
+  },
+  {
+    "filename": "item_bread.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a golden brown loaf of bread with three scored cuts on top, centered, 32x32 logical pixel item icon, generate large."
+  },
+  {
+    "filename": "tool_hoe.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a single farm hoe with a wooden handle and small dark metal blade, diagonal orientation, centered, 32x32 logical pixel tool icon, generate large."
+  },
+  {
+    "filename": "tool_watering_can.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a single small blue watering can with a curved handle and long spout, centered, 32x32 logical pixel tool icon, generate large."
+  },
+  {
+    "filename": "item_seed_packet.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a cream paper tomato seed packet with a small red tomato illustration and no lettering, centered, 32x32 logical pixel item icon, generate large."
+  },
+  {
+    "filename": "ui_slot.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: one square inventory slot, warm cream outer rim and milk-brown inner edge, empty transparent center, designed to fill a 32x32 logical pixel cell with 2 pixel thick rim. This subject is itself a UI frame. Generate large."
+  },
+  {
+    "filename": "ui_coin.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a single shiny gold coin with simple sun emblem, no lettering, centered, 32x32 logical pixel UI icon, generate large."
+  },
+  {
+    "filename": "ui_energy_bar.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: an energy meter atlas within one square 32x32 logical pixel image: top half contains a horizontal cream and milk-brown empty bar frame, transparent hollow center, bottom half contains a separate solid green energy fill strip. Top frame occupies logical rectangle x=0 y=0 width=32 height=16; bottom strip x=2 y=20 width=28 height=8. Empty transparent space elsewhere; no labels. Generate large."
+  },
+  {
+    "filename": "building_farmhouse.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a cozy small farmhouse with orange tiled roof, cream plaster walls, wooden door and two windows, full building isolated, top-down three-quarter game view. 96x96 logical pixel sprite, larger than one tile, pixel density matching 32x32 character tiles. Generate large."
+  },
+  {
+    "filename": "building_shop_stall.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a wooden market stall with sunny orange and cream striped awning and a counter of tiny produce baskets, isolated full building, top-down three-quarter game view, 96x64 logical pixel sprite, pixel density matching 32x32 tiles. Generate large."
+  },
+  {
+    "filename": "building_stove.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a rustic cream and dark iron cooking stove with a pot on top, isolated full stove, top-down three-quarter game view, 64x64 logical pixel sprite, pixel density matching 32x32 tiles. Generate large."
+  },
+  {
+    "filename": "tile_tilled_watered.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a single square ground tile of freshly watered tilled soil, dark brown damp earth with parallel furrows and tiny blue moisture glints, fills entire square to edges, flat ground surface without perspective sides, 32x32 logical pixel tile. Generate large."
+  },
+  {
+    "filename": "fx_sparkle.png",
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a small golden four-point harvest sparkle with two tiny secondary glints, centered, transparent surrounding space, 32x32 logical pixel effect sprite, generate large."
+  }
+]
