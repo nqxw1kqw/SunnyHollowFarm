@@ -1,0 +1,18 @@
+Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.
+Top-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,
+orange accents, tomato red highlights, cream and milk-brown for UI.
+Clean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,
+no gradients, no blur. Transparent background. No text, no watermark, no border frame.
+Single subject centered, consistent lighting from the top-left.
+
+Use case: stylized-concept
+Asset type: connected terrain tileset for Sunny Hollow Farm.
+Generate ONE exact 8-column by 3-row sheet, 2048x768 pixels, with 24 square 256x256 cells, no gaps, margins, grid lines, labels, or outer frame. Each cell represents a 32x32 pixel tile enlarged 8x with crisp square pixels. Pastel storybook pixel art, flat colors, sparse delicate details, straight top-down terrain.
+Terrain-specific override: ALL cells entirely opaque and drawn edge-to-edge, no transparency, no centered islands, no outlines around cell borders. The single subject is the complete tileset. Same uniform base grass green across ALL grass and bank tiles, same uniform pastel blue water across ALL water and shore tiles. Keep decoration away from edges. No lighting gradients or vignette. Opposite edges of repeating full terrain tiles must seamlessly match with uniform base colors.
+Exact cell order, left to right:
+ROW 1: grass_0, grass_1, grass_2, grass_3, dirt_0, dirt_1, path_0, path_1.
+ROW 2: water_0, water_1, shore_n, shore_s, shore_e, shore_w, spare_grass_A, spare_grass_B.
+ROW 3: shore_ne, shore_nw, shore_se, shore_sw, grass_4, grass_5, grass_6, grass_7.
+Grass 0-3: four subtle sparse blade/tuft variants, identical base green. Dirt 0-1: warm bare farm soil, no furrows. Path 0-1: lighter packed-earth, sparse tiny grit, completely fills square. Water 0-1: blue pond water with sparse gentle short wave marks.
+Shore tiles are WATER tiles with a narrow grass bank occupying exactly the outer 6 of 32 logical pixels along the named edge, with a thin warm earthy shoreline at the water interface. The bank continues across the full named edge; no grass along unnamed edges. Straight banks share identical thickness and cross-section so neighboring shore tiles connect exactly. shore_n = bank TOP only; shore_s = BOTTOM only; shore_e = RIGHT only; shore_w = LEFT only. Corner shore_ne = banks TOP and RIGHT joined at top-right, water in bottom-left interior; shore_nw = TOP and LEFT joined top-left; shore_se = BOTTOM and RIGHT joined bottom-right; shore_sw = BOTTOM and LEFT joined bottom-left. Corners are concave water interiors bounded by connected L-shaped grass banks. Water extends all the way to every unnamed edge except the perpendicular bank's 6-pixel continuation.
+Grass_4 has a few tiny cream/yellow flowers; grass_5 a few tiny small pebbles; grass_6 and grass_7 more subtle grass tuft variants. Both spare cells are plain grass variants. All eight grass cells share the same base green and seamless undecorated outer edges. No text anywhere.
