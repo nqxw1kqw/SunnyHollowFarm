@@ -89,7 +89,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 140) {
+                if (m_smokeTestFrames >= 150) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -128,6 +128,12 @@ void Game::handleInput() {
     // When the shop UI modal is open, pass input to it and pause world interaction
     if (m_shopUI.isOpen()) {
         m_shopUI.handleInput(m_input, m_inventory, m_shopSystem, &m_hud);
+        return;
+    }
+
+    // Documented quick-sleep key [Z] (Zzz... rest overnight)
+    if (m_input.isKeyPressed(SDL_SCANCODE_Z)) {
+        m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
         return;
     }
 
@@ -176,7 +182,14 @@ void Game::handleInput() {
             return;
         }
 
-        // 4. Farming interaction
+        // 4. Farmhouse / Bed interaction check
+        if (m_map.inBounds(tx, ty) &&
+            (m_map.getTile(tx, ty).getType() == TileType::Farmhouse || TimeSystem::isBedTile(tx, ty))) {
+            m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+            return;
+        }
+
+        // 5. Farming interaction
         m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud);
     }
 }
@@ -389,6 +402,48 @@ void Game::update(float dt) {
             m_shopUI.close();
             assert(!m_shopUI.isOpen());
             std::cout << "[Smoke Test] Seller/Buyer NPCs and ShopUI modal verified!" << std::endl;
+        } else if (m_smokeTestFrames == 138) {
+            // Milestone 6: Pre-sleep setup
+            // Prepare a watered soil plot and plant a seed to observe overnight growth and soil drying
+            m_map.setTileType(6, 5, TileType::WateredSoil);
+            bool planted = m_farmSystem.plant(6, 5, m_map, m_inventory, m_player, &m_hud, ItemType::TomatoSeeds);
+            assert(planted && "Planting test seed at (6, 5) must succeed");
+
+            Crop* testCrop = m_farmSystem.findCrop(6, 5);
+            assert(testCrop != nullptr && "Crop must exist at (6, 5)");
+            assert(testCrop->getStage() == CropStage::Seed && "New crop starts at stage 1 Seed");
+            assert(m_map.getTile(6, 5).getType() == TileType::WateredSoil && "Tile must be WateredSoil");
+
+            // Deplete stamina to test full overnight energy restoration
+            m_player.setEnergy(25);
+            assert(m_player.getEnergy() == 25);
+            assert(m_timeSystem.getDay() == 1 && "Initial day must be 1");
+            std::cout << "[Smoke Test] Pre-sleep setup verified: Day 1, Energy 25/100, Crop at (6, 5) is Seed on Watered Soil." << std::endl;
+        } else if (m_smokeTestFrames == 140) {
+            // Milestone 6: Sleep overnight
+            m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+
+            // 1. Verify day counter incremented
+            assert(m_timeSystem.getDay() == 2 && "Sleeping overnight must advance the day counter to 2");
+
+            // 2. Verify energy fully restored
+            assert(m_player.getEnergy() == Config::INITIAL_ENERGY && "Energy must be fully restored to max (100) after sleeping");
+
+            // 3. Verify crop growth stage advanced overnight
+            Crop* cropAfterSleep = m_farmSystem.findCrop(6, 5);
+            assert(cropAfterSleep != nullptr);
+            assert(cropAfterSleep->getStage() == CropStage::Sprout && "Crop growth stage must advance overnight from Seed to Sprout");
+
+            // 4. Verify watered soil dried back to tilled soil under documented overnight rule
+            assert(m_map.getTile(6, 5).getType() == TileType::TilledSoil && "Watered soil must dry back to tilled soil overnight");
+
+            // 5. Verify HUD on-screen notification feedback
+            assert(m_hud.hasActiveFeedback() && "Wake-up feedback notification must be triggered");
+
+            // 6. Verify farmhouse bed tile detection
+            assert(TimeSystem::isBedTile(2, 2) && "Farmhouse entrance / bed tile at (2, 2) must be recognized");
+
+            std::cout << "[Smoke Test] Day cycle verified: Day incremented (1->2), Energy restored (25->100), Crop stage advanced (Seed->Sprout), Watered soil dried back to Tilled soil!" << std::endl;
         }
     }
 }
@@ -410,8 +465,8 @@ void Game::render() {
     // 4. Render farmer player
     m_player.render(m_renderer);
 
-    // 5. Render HUD (hotbar, money counter, energy bar, inventory hint, tomato counter, feedback banner)
-    m_hud.render(m_renderer, m_inventory, m_player);
+    // 5. Render HUD with Day Counter (hotbar, money counter, energy bar, day counter, inventory hint, tomato counter, feedback banner)
+    m_hud.render(m_renderer, m_inventory, m_player, m_timeSystem.getDay());
 
     // 6. Render Inventory Grid modal when open
     if (m_inventoryUI.isOpen()) {

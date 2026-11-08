@@ -16,6 +16,7 @@
 #include "entities/NPC.h"
 #include "systems/ShopSystem.h"
 #include "ui/ShopUI.h"
+#include "systems/TimeSystem.h"
 
 // Top-level application class orchestrating game setup, fixed-timestep loop, and teardown.
 class Game {
@@ -51,6 +52,8 @@ public:
     ShopUI& getShopUI() { return m_shopUI; }
     const NPC& getSellerNPC() const { return m_sellerNPC; }
     const NPC& getBuyerNPC() const { return m_buyerNPC; }
+    const TimeSystem& getTimeSystem() const { return m_timeSystem; }
+    TimeSystem& getTimeSystem() { return m_timeSystem; }
 
 private:
     void handleInput();
@@ -71,6 +74,7 @@ private:
     ShopSystem m_shopSystem;
     NPC m_sellerNPC{14, 2, NPCType::Seller, "Bram the Merchant"};
     NPC m_buyerNPC{17, 2, NPCType::Buyer, "Silas the Produce Buyer"};
+    TimeSystem m_timeSystem;
     HUD m_hud;
     InventoryUI m_inventoryUI;
     CookingUI m_cookingUI;

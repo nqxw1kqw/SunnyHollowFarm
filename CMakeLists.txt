@@ -31,6 +31,7 @@ set(SOURCES
     src/entities/NPC.cpp
     src/systems/ShopSystem.cpp
     src/ui/ShopUI.cpp
+    src/systems/TimeSystem.cpp
 )
 
 add_executable(sunny_hollow_farm ${SOURCES})
