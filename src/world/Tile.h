@@ -25,9 +25,9 @@ public:
                m_type != TileType::Void;
     }
 
-    // Dirt or grass can be tilled using a hoe.
+    // Dirt, grass, or path can be tilled using a hoe.
     bool isTillable() const {
-        return m_type == TileType::Grass || m_type == TileType::Dirt;
+        return m_type == TileType::Grass || m_type == TileType::Dirt || m_type == TileType::Path;
     }
 
     // Tilled or watered soil can host crops.

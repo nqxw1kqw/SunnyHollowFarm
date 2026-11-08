@@ -656,6 +656,24 @@ void Game::update(float dt) {
             assert(HUD::HOTBAR_X == (Config::SCREEN_WIDTH - HUD::HOTBAR_TOTAL_WIDTH) / 2);
             std::cout << "[Smoke Test] Hotbar bottom layout verified: Y=" << HUD::HOTBAR_Y
                       << ", slots=" << HUD::HOTBAR_SLOT_COUNT << ", centered at X=" << HUD::HOTBAR_X << "!" << std::endl;
+        } else if (m_smokeTestFrames == 148) {
+            // Verify connected terrain: deterministic variant hashing and shore edge/corner tile selection
+            int v1 = Map::getCellVariant(5, 5, 8);
+            int v2 = Map::getCellVariant(5, 5, 8);
+            assert(v1 == v2 && "Cell variant selection must be deterministic");
+            assert(v1 >= 0 && v1 < 8 && "Variant must be within [0, numVariants)");
+
+            // Check sample pond edge and corner shore tiles
+            // Pond water is at (16..18, 11..13)
+            std::string nwShore = m_map.getShoreTileName(16, 11);
+            std::string nShore = m_map.getShoreTileName(17, 11);
+            std::string centerWater = m_map.getShoreTileName(17, 12);
+            assert(nwShore == "tile_shore_nw.png" && "Sample pond NW corner must select tile_shore_nw.png");
+            assert(nShore == "tile_shore_n.png" && "Sample pond N edge must select tile_shore_n.png");
+            assert((centerWater == "tile_water_0.png" || centerWater == "tile_water_1.png") && "Center water tile must select water variant");
+            std::cout << "[Smoke Test] Connected terrain verified: deterministic variant=" << v1
+                      << ", NW corner shore=" << nwShore << ", North edge shore=" << nShore
+                      << ", center water=" << centerWater << "!" << std::endl;
         }
     }
 }

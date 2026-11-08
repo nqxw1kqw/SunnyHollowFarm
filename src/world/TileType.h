@@ -4,6 +4,7 @@
 enum class TileType {
     Grass,          // Natural grassy meadow
     Dirt,           // Untilled farm soil
+    Path,           // Beaten dirt footpath
     TilledSoil,     // Soil prepared with a hoe, ready for planting
     WateredSoil,    // Tilled soil that has been watered, accelerating crop growth
     Water,          // Pond water (impassable)

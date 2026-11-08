@@ -29,7 +29,13 @@ public:
     // Collision check: returns true if the bounding rectangle can walk here.
     bool isAreaWalkable(float x, float y, float w, float h) const;
 
-    // Renders the entire tile map using colored placeholder rectangles.
+    // Deterministic hash of cell coordinates for variant selection (e.g. grass 0..7, dirt 0..1, path 0..1)
+    static int getCellVariant(int tileX, int tileY, int numVariants);
+
+    // Returns the contract filename for water/shore tile at (tileX, tileY)
+    std::string getShoreTileName(int tileX, int tileY) const;
+
+    // Renders the entire tile map using connected regional terrain and sprites with graceful fallbacks.
     void render(Renderer& renderer) const;
 
 private:
