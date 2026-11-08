@@ -187,7 +187,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 156) {
+                if (m_smokeTestFrames >= 157) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -1425,6 +1425,150 @@ void Game::update(float dt) {
             m_inventory = backup;
 
             std::cout << "[Smoke Test] Fishing system verified: state machine clean, catch (+1 fish, -3 energy), early cancel, timeout escape, and full bag escape!" << std::endl;
+        } else if (m_smokeTestFrames == 156) {
+            // Chicken System verification:
+            // 1. Pen fence survey & layout check
+            assert(m_map.getTile(1, 10).getType() == TileType::Fence);
+            assert(m_map.getTile(2, 10).getType() == TileType::Fence);
+            assert(m_map.getTile(3, 10).getType() == TileType::Grass && "Gate gap at (3, 10) must be walkable Grass");
+            assert(m_map.getTile(4, 10).getType() == TileType::Fence);
+            assert(m_map.getTile(5, 10).getType() == TileType::Fence);
+            assert(m_map.getTile(6, 10).getType() == TileType::Fence);
+            assert(m_map.getTile(1, 14).getType() == TileType::Fence);
+            assert(m_map.getTile(6, 14).getType() == TileType::Fence);
+
+            // Fresh state starts with 0 chickens and 0 ground eggs
+            m_chickenSystem.reset();
+            assert(m_chickenSystem.getChickenCount() == 0);
+            assert(m_chickenSystem.getGroundEggCount() == 0);
+
+            // 2. Buy chicken (wallet -100, count +1, does not enter bag)
+            assert(m_shopSystem.getBuyPrice(ItemType::Chicken) == 100);
+            m_inventory.setMoney(500);
+            bool buy1 = m_shopSystem.buyItem(ItemType::Chicken, 1, m_inventory, &m_hud, &m_audio);
+            assert(buy1 && "Buying chicken for 100G succeeds");
+            assert(m_inventory.getMoney() == 400 && "Wallet must be reduced by exactly 100G (500 -> 400)");
+            assert(m_chickenSystem.getChickenCount() == 1 && "Chicken count increments to 1");
+            assert(m_inventory.getItemCount(ItemType::Chicken) == 0 && "Chicken does not enter inventory slots");
+            assert(m_chickenSystem.getChickens()[0].getX() >= 64.0f && m_chickenSystem.getChickens()[0].getX() <= 160.0f);
+            assert(m_chickenSystem.getChickens()[0].getY() >= 352.0f && m_chickenSystem.getChickens()[0].getY() <= 416.0f);
+
+            // 3. Cap refusal at 6 with no charge
+            m_inventory.setMoney(1000);
+            for (int i = 0; i < 5; ++i) {
+                bool buyExtra = m_shopSystem.buyItem(ItemType::Chicken, 1, m_inventory, &m_hud, &m_audio);
+                assert(buyExtra);
+            }
+            assert(m_chickenSystem.getChickenCount() == 6 && "Pen is now at capacity of 6 chickens");
+            assert(m_inventory.getMoney() == 500);
+
+            bool buy7 = m_shopSystem.buyItem(ItemType::Chicken, 1, m_inventory, &m_hud, &m_audio);
+            assert(!buy7 && "Buying chicken beyond cap 6 must be refused");
+            assert(m_chickenSystem.getChickenCount() == 6 && "Chicken count remains at 6");
+            assert(m_inventory.getMoney() == 500 && "No charge on refused cap purchase");
+            assert(m_hud.getActiveFeedback() == "PEN AT CAPACITY (6/6)!");
+
+            // Selling chickens is not supported
+            bool sellChicken = m_shopSystem.sellItem(ItemType::Chicken, 1, m_inventory, &m_hud, &m_audio);
+            assert(!sellChicken && "Selling chickens must not be supported");
+
+            // 4. Forced egg spawn overnight
+            m_chickenSystem.clearGroundEggs();
+            m_chickenSystem.forceNextEggSpawn(true);
+            int dayBeforeSleep = m_timeSystem.getDay();
+            m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+            assert(m_timeSystem.getDay() == dayBeforeSleep + 1);
+            assert(m_chickenSystem.getGroundEggCount() == 6 && "Each of 6 chickens laid 1 egg under forced spawn");
+            for (const auto& egg : m_chickenSystem.getGroundEggs()) {
+                assert(egg.tileX >= ChickenSystem::PEN_MIN_TILE_X && egg.tileX <= ChickenSystem::PEN_MAX_TILE_X);
+                assert(egg.tileY >= ChickenSystem::PEN_MIN_TILE_Y && egg.tileY <= ChickenSystem::PEN_MAX_TILE_Y);
+            }
+
+            // 5. Collect egg into inventory respecting inventory capacity rule
+            int eggTx = m_chickenSystem.getGroundEggs()[0].tileX;
+            int eggTy = m_chickenSystem.getGroundEggs()[0].tileY;
+            int groundCountBefore = m_chickenSystem.getGroundEggCount();
+
+            // Test full bag refusal
+            Inventory fullInvBackup = m_inventory;
+            for (auto& slot : m_inventory.getSlots()) {
+                slot.type = ItemType::Wheat;
+                slot.count = Config::MAX_STACK_SIZE;
+            }
+            bool fullCollect = m_chickenSystem.collectEgg(eggTx, eggTy, m_inventory, &m_hud, &m_audio);
+            assert(!fullCollect && "Egg collection refused when inventory is full");
+            assert(m_chickenSystem.getGroundEggCount() == groundCountBefore && "Egg remains on ground");
+            assert(m_hud.getActiveFeedback() == "INVENTORY FULL!");
+            m_inventory = fullInvBackup;
+
+            // Successful collection
+            m_inventory.clear();
+            bool collected = m_chickenSystem.collectEgg(eggTx, eggTy, m_inventory, &m_hud, &m_audio);
+            assert(collected && "Collecting egg with free inventory succeeds");
+            assert(m_chickenSystem.getGroundEggCount() == groundCountBefore - 1);
+            assert(m_inventory.getItemCount(ItemType::Egg) == 1 && "Egg added to inventory");
+            assert(m_hud.getActiveFeedback() == "COLLECTED 1 EGG!");
+
+            // 6. Sell egg at exactly 15G
+            assert(m_shopSystem.getSellPrice(ItemType::Egg) == 15 && "Buyer price for Egg must be exactly 15G");
+            m_inventory.setMoney(100);
+            bool soldEgg = m_shopSystem.sellItem(ItemType::Egg, 1, m_inventory, &m_hud, &m_audio);
+            assert(soldEgg && "Selling Egg to Buyer NPC succeeds");
+            assert(m_inventory.getItemCount(ItemType::Egg) == 0);
+            assert(m_inventory.getMoney() == 115 && "Wallet must be exactly 100 + 15 = 115G");
+
+            // 7. Cook Omelette from 2 eggs
+            assert(m_shopSystem.getSellPrice(ItemType::Omelette) == 50 && "Buyer price for Omelette must be exactly 50G");
+            m_inventory.clear();
+            m_inventory.addItem(ItemType::Egg, 1);
+            bool cookMissing = m_cookingSystem.cook(ItemType::Omelette, m_inventory, &m_hud);
+            assert(!cookMissing && "Cooking Omelette requires 2 eggs, refused with 1");
+            m_inventory.addItem(ItemType::Egg, 1); // now 2 eggs
+            bool cookOk = m_cookingSystem.cook(ItemType::Omelette, m_inventory, &m_hud);
+            assert(cookOk && "Cooking Omelette succeeds with 2 eggs");
+            assert(m_inventory.getItemCount(ItemType::Egg) == 0 && "2x eggs consumed");
+            assert(m_inventory.getItemCount(ItemType::Omelette) == 1 && "1x Omelette created");
+
+            // Verify eating Omelette restores +40 energy
+            m_player.setEnergy(50);
+            m_inventoryUI.open();
+            m_inventoryUI.setSelectedSlot(0);
+            bool ate = eatSelectedItem();
+            assert(ate && "Eating Omelette succeeds");
+            assert(m_player.getEnergy() == 90 && "Stamina restored by +40 (50 -> 90)");
+            assert(m_hud.getActiveFeedback() == "Ate Omelette: +40 Energy");
+            m_inventoryUI.close();
+
+            // 8. Save/load restores chickens and eggs
+            m_chickenSystem.setChickenCount(4);
+            m_chickenSystem.clearGroundEggs();
+            m_chickenSystem.addGroundEgg(2, 11);
+            m_chickenSystem.addGroundEgg(3, 12);
+            m_chickenSystem.addGroundEgg(5, 13);
+            bool saveOk = SaveSystem::save(*this, "smoke_chicken_save.json");
+            assert(saveOk);
+            m_chickenSystem.reset();
+            assert(m_chickenSystem.getChickenCount() == 0);
+            assert(m_chickenSystem.getGroundEggCount() == 0);
+            bool loadOk = SaveSystem::load(*this, "smoke_chicken_save.json");
+            assert(loadOk);
+            assert(m_chickenSystem.getChickenCount() == 4);
+            assert(m_chickenSystem.getGroundEggCount() == 3);
+            assert(m_chickenSystem.hasEggAt(2, 11));
+            assert(m_chickenSystem.hasEggAt(3, 12));
+            assert(m_chickenSystem.hasEggAt(5, 13));
+            SaveSystem::removeSave("smoke_chicken_save.json");
+
+            // 9. Chicken wandering containment inside pen
+            for (int tick = 0; tick < 60; ++tick) {
+                m_chickenSystem.update(0.05f);
+            }
+            for (const auto& ch : m_chickenSystem.getChickens()) {
+                assert(ch.getX() >= 64.0f && ch.getX() <= 160.0f && "Chicken X within pen");
+                assert(ch.getY() >= 352.0f && ch.getY() <= 416.0f && "Chicken Y within pen");
+            }
+
+            std::cout << "[Smoke Test] Chicken system verified: buy chicken (-100G, count +1), cap refusal at 6 with no charge, forced egg spawn overnight, collect egg with inventory capacity rule, sell egg at 15G, cook & eat Omelette, pen fence containment, and save/load persistence!" << std::endl;
         }
     }
 }
@@ -2170,7 +2314,55 @@ void Game::updatePlaytest(float dt) {
         assert(m_inventory.getMoney() == 174 && "Wallet must be exactly 119 + 55 = 174G");
 
         std::cout << "[PASS] Step 16: Caught 2x Fish, cooked 1x Grilled Fish, and sold Fish (30G) & Grilled Fish (55G) to Buyer (Wallet: 174G)" << std::endl;
-    } else if (m_playtestFrames >= 175) {
+    } else if (m_playtestFrames == 170) {
+        // Step 17: Buy Chicken from Seller, sleep overnight, collect egg from pen, and sell to Buyer NPC
+        assert(m_inventory.getMoney() == 174 && "Wallet must be exactly 174G after Step 16");
+        assert(m_chickenSystem.getChickenCount() == 0 && "Chicken count starts at 0");
+        assert(m_chickenSystem.getGroundEggCount() == 0 && "Ground eggs start at 0");
+
+        // 1. Walk to Seller NPC and buy 1x Chicken for 100G
+        m_player.placeAtTileCenter(14, 3);
+        m_player.setFacing(Direction::Up);
+        assert(m_shopSystem.getBuyPrice(ItemType::Chicken) == 100 && "Chicken buy price must be 100G per prices.txt");
+
+        bool boughtChicken = m_shopSystem.buyItem(ItemType::Chicken, 1, m_inventory, &m_hud, &m_audio);
+        assert(boughtChicken && "Purchasing Chicken from Seller must succeed");
+        assert(m_chickenSystem.getChickenCount() == 1 && "Farm chicken count increments to 1");
+        assert(m_inventory.getItemCount(ItemType::Chicken) == 0 && "Chicken does not enter player bag slots");
+        assert(m_inventory.getMoney() == 74 && "Wallet must be exactly 174 - 100 = 74G");
+
+        // 2. Sleep overnight from Day 6 to Day 7 with forced egg spawn
+        m_chickenSystem.forceNextEggSpawn(true);
+        m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+        assert(m_timeSystem.getDay() == 7 && "Day counter advances to 7");
+        assert(m_chickenSystem.getGroundEggCount() == 1 && "Chicken produced 1 egg overnight in the pen");
+
+        // 3. Move into pen and collect egg from its tile
+        const auto& eggs = m_chickenSystem.getGroundEggs();
+        assert(!eggs.empty() && "Ground egg list must not be empty");
+        int eggTx = eggs[0].tileX;
+        int eggTy = eggs[0].tileY;
+        assert(eggTx >= ChickenSystem::PEN_MIN_TILE_X && eggTx <= ChickenSystem::PEN_MAX_TILE_X);
+        assert(eggTy >= ChickenSystem::PEN_MIN_TILE_Y && eggTy <= ChickenSystem::PEN_MAX_TILE_Y);
+
+        m_player.placeAtTileCenter(eggTx, eggTy);
+        bool collected = m_chickenSystem.collectEgg(eggTx, eggTy, m_inventory, &m_hud, &m_audio);
+        assert(collected && "Egg collection from pen tile succeeds");
+        assert(m_chickenSystem.getGroundEggCount() == 0 && "Egg removed from ground");
+        assert(m_inventory.getItemCount(ItemType::Egg) == 1 && "1x Egg added to player inventory");
+
+        // 4. Move to Buyer NPC and sell Egg for exactly 15G
+        m_player.placeAtTileCenter(17, 3);
+        m_player.setFacing(Direction::Up);
+        assert(m_shopSystem.getSellPrice(ItemType::Egg) == 15 && "Buyer purchases Egg for exactly 15G per prices.txt");
+
+        bool soldEgg = m_shopSystem.sellItem(ItemType::Egg, 1, m_inventory, &m_hud, &m_audio);
+        assert(soldEgg && "Selling Egg to Buyer succeeds");
+        assert(m_inventory.getItemCount(ItemType::Egg) == 0 && "Egg consumed from inventory");
+        assert(m_inventory.getMoney() == 89 && "Wallet must be exactly 74 + 15 = 89G");
+
+        std::cout << "[PASS] Step 17: Bought 1x Chicken (-100G), forced overnight egg, collected from pen, and sold Egg (+15G) to Buyer (Wallet: 89G, Chickens: 1, Day: 7)" << std::endl;
+    } else if (m_playtestFrames >= 180) {
         std::cout << "[PASS] Full playthrough playtest and farmhouse interior verifications passed cleanly across "
                   << m_timeSystem.getDay() << " in-game days!" << std::endl;
         m_isRunning = false;

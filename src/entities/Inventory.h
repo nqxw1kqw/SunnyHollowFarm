@@ -59,6 +59,7 @@ public:
     const InventorySlot& getSlot(int index) const { return m_slots.at(index); }
     InventorySlot& getSlot(int index) { return m_slots.at(index); }
     int getSlotCount() const { return static_cast<int>(m_slots.size()); }
+    void clear() { for (auto& slot : m_slots) slot.clear(); }
 
     // Convenience accessors for existing Milestone 2 callers
     int getTomatoSeeds() const { return getItemCount(ItemType::TomatoSeeds); }
