@@ -2,7 +2,9 @@
 #include "ui/BitmapFont.h"
 #include <iostream>
 
-void InventoryUI::handleInput(const Input& input, Inventory& inventory) {
+#include "systems/AudioSystem.h"
+
+void InventoryUI::handleInput(const Input& input, Inventory& inventory, AudioSystem* audio) {
     (void)inventory;
     if (!m_isOpen) return;
 
@@ -11,6 +13,7 @@ void InventoryUI::handleInput(const Input& input, Inventory& inventory) {
         input.isKeyPressed(SDL_SCANCODE_I) ||
         input.isKeyPressed(SDL_SCANCODE_ESCAPE)) {
         close();
+        if (audio) audio->playSFX(SFX::UIConfirm);
         return;
     }
 
@@ -21,17 +24,26 @@ void InventoryUI::handleInput(const Input& input, Inventory& inventory) {
     int col = m_selectedSlot % COLS;
     int row = m_selectedSlot / COLS;
 
+    bool moved = false;
     if (input.isKeyPressed(SDL_SCANCODE_LEFT) || input.isKeyPressed(SDL_SCANCODE_A)) {
         col = (col - 1 + COLS) % COLS;
+        moved = true;
     }
     if (input.isKeyPressed(SDL_SCANCODE_RIGHT) || input.isKeyPressed(SDL_SCANCODE_D)) {
         col = (col + 1) % COLS;
+        moved = true;
     }
     if (input.isKeyPressed(SDL_SCANCODE_UP) || input.isKeyPressed(SDL_SCANCODE_W)) {
         row = (row - 1 + ROWS) % ROWS;
+        moved = true;
     }
     if (input.isKeyPressed(SDL_SCANCODE_DOWN) || input.isKeyPressed(SDL_SCANCODE_S)) {
         row = (row + 1) % ROWS;
+        moved = true;
+    }
+
+    if (moved && audio) {
+        audio->playSFX(SFX::UIConfirm);
     }
 
     m_selectedSlot = row * COLS + col;

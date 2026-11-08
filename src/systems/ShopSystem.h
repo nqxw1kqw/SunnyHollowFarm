@@ -12,6 +12,8 @@ struct ItemPrice {
     int sellPrice = 0;  // Payout when sold to buyer NPC
 };
 
+class AudioSystem;
+
 // Shop system handling economy prices, purchases, and sales.
 class ShopSystem {
 public:
@@ -26,11 +28,11 @@ public:
 
     // Purchases an item from the seller NPC, deducting coins and adding items.
     // Provides clear on-screen HUD feedback and console logging.
-    bool buyItem(ItemType item, int count, Inventory& inventory, HUD* hud = nullptr);
+    bool buyItem(ItemType item, int count, Inventory& inventory, HUD* hud = nullptr, AudioSystem* audio = nullptr);
 
     // Sells an item to the buyer NPC, removing items and granting coins.
     // Provides clear on-screen HUD feedback and console logging.
-    bool sellItem(ItemType item, int count, Inventory& inventory, HUD* hud = nullptr);
+    bool sellItem(ItemType item, int count, Inventory& inventory, HUD* hud = nullptr, AudioSystem* audio = nullptr);
 
     // Items offered by Seller NPC (seeds and pantry basics)
     const std::vector<ItemType>& getSellerCatalog() const { return m_sellerCatalog; }

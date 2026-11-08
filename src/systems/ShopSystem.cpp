@@ -132,7 +132,9 @@ int ShopSystem::getSellPrice(ItemType item) const {
     return getItemDefinition(item).sellPrice;
 }
 
-bool ShopSystem::buyItem(ItemType item, int count, Inventory& inventory, HUD* hud) {
+#include "systems/AudioSystem.h"
+
+bool ShopSystem::buyItem(ItemType item, int count, Inventory& inventory, HUD* hud, AudioSystem* audio) {
     if (item == ItemType::Empty || count <= 0) return false;
 
     int unitPrice = getBuyPrice(item);
@@ -161,6 +163,9 @@ bool ShopSystem::buyItem(ItemType item, int count, Inventory& inventory, HUD* hu
 
     std::cout << "[ShopSystem] Purchased " << count << "x " << itemTypeToString(item)
               << " for " << totalCost << "G [Remaining Wallet: " << inventory.getMoney() << "G]" << std::endl;
+    if (audio) {
+        audio->playSFX(SFX::Buy);
+    }
     if (hud) {
         std::string msg = "BOUGHT: " + itemTypeToString(item) + " (-" + std::to_string(totalCost) + "G)";
         std::transform(msg.begin(), msg.end(), msg.begin(), ::toupper);
@@ -170,7 +175,7 @@ bool ShopSystem::buyItem(ItemType item, int count, Inventory& inventory, HUD* hu
     return true;
 }
 
-bool ShopSystem::sellItem(ItemType item, int count, Inventory& inventory, HUD* hud) {
+bool ShopSystem::sellItem(ItemType item, int count, Inventory& inventory, HUD* hud, AudioSystem* audio) {
     if (item == ItemType::Empty || count <= 0) return false;
 
     int haveCount = inventory.getItemCount(item);
@@ -192,6 +197,9 @@ bool ShopSystem::sellItem(ItemType item, int count, Inventory& inventory, HUD* h
 
     std::cout << "[ShopSystem] Sold " << count << "x " << itemTypeToString(item)
               << " for +" << totalPayout << "G [New Wallet: " << inventory.getMoney() << "G]" << std::endl;
+    if (audio) {
+        audio->playSFX(SFX::Sell);
+    }
     if (hud) {
         std::string msg = "SOLD: " + itemTypeToString(item) + " (+" + std::to_string(totalPayout) + "G)";
         std::transform(msg.begin(), msg.end(), msg.begin(), ::toupper);

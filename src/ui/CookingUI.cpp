@@ -2,7 +2,9 @@
 #include "ui/BitmapFont.h"
 #include <iostream>
 
-void CookingUI::handleInput(const Input& input, Inventory& inventory, CookingSystem& cookingSystem, HUD* hud) {
+#include "systems/AudioSystem.h"
+
+void CookingUI::handleInput(const Input& input, Inventory& inventory, CookingSystem& cookingSystem, HUD* hud, AudioSystem* audio) {
     if (!m_isOpen) return;
 
     // Close on Escape, Tab, or E
@@ -10,6 +12,7 @@ void CookingUI::handleInput(const Input& input, Inventory& inventory, CookingSys
         input.isKeyPressed(SDL_SCANCODE_TAB) ||
         input.isKeyPressed(SDL_SCANCODE_E)) {
         close();
+        if (audio) audio->playSFX(SFX::UIConfirm);
         return;
     }
 
@@ -19,16 +22,18 @@ void CookingUI::handleInput(const Input& input, Inventory& inventory, CookingSys
     // Navigate recipe list with Up/Down or W/S
     if (input.isKeyPressed(SDL_SCANCODE_UP) || input.isKeyPressed(SDL_SCANCODE_W)) {
         m_selectedIndex = (m_selectedIndex - 1 + recipeCount) % recipeCount;
+        if (audio) audio->playSFX(SFX::UIConfirm);
     }
     if (input.isKeyPressed(SDL_SCANCODE_DOWN) || input.isKeyPressed(SDL_SCANCODE_S)) {
         m_selectedIndex = (m_selectedIndex + 1) % recipeCount;
+        if (audio) audio->playSFX(SFX::UIConfirm);
     }
 
     // Cook with Return, Space, or C
     if (input.isKeyPressed(SDL_SCANCODE_RETURN) ||
         input.isKeyPressed(SDL_SCANCODE_SPACE) ||
         input.isKeyPressed(SDL_SCANCODE_C)) {
-        bool ok = cookingSystem.cook(m_selectedIndex, inventory, hud);
+        bool ok = cookingSystem.cook(m_selectedIndex, inventory, hud, audio);
         if (!ok) {
             std::cout << "[CookingUI] Cooking failed due to missing ingredients." << std::endl;
         }

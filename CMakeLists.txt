@@ -5,10 +5,15 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if(DEFINED ENV{HOME} AND EXISTS "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu/pkgconfig")
+    set(ENV{PKG_CONFIG_PATH} "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu/pkgconfig:$ENV{PKG_CONFIG_PATH}")
+endif()
+
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)
 pkg_check_modules(SDL2_IMAGE REQUIRED IMPORTED_TARGET SDL2_image)
 pkg_check_modules(SDL2_TTF REQUIRED IMPORTED_TARGET SDL2_ttf)
+pkg_check_modules(SDL2_MIXER REQUIRED IMPORTED_TARGET SDL2_mixer)
 
 set(SOURCES
     src/main.cpp
@@ -33,6 +38,7 @@ set(SOURCES
     src/ui/ShopUI.cpp
     src/systems/TimeSystem.cpp
     src/systems/SaveSystem.cpp
+    src/systems/AudioSystem.cpp
 )
 
 add_executable(sunny_hollow_farm ${SOURCES})
@@ -41,8 +47,14 @@ target_include_directories(sunny_hollow_farm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}
 
 target_compile_options(sunny_hollow_farm PRIVATE -Wall -Wextra -Wpedantic)
 
+if(DEFINED ENV{HOME} AND EXISTS "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu")
+    target_link_directories(sunny_hollow_farm PRIVATE "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu")
+    target_link_options(sunny_hollow_farm PRIVATE "-Wl,--disable-new-dtags,-rpath,$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu")
+endif()
+
 target_link_libraries(sunny_hollow_farm PRIVATE
     PkgConfig::SDL2
     PkgConfig::SDL2_IMAGE
     PkgConfig::SDL2_TTF
+    PkgConfig::SDL2_MIXER
 )

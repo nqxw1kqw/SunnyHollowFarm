@@ -6,6 +6,8 @@
 #include "systems/CookingSystem.h"
 #include "ui/HUD.h"
 
+class AudioSystem;
+
 // Interactive kitchen stove cooking modal UI.
 // Lists recipes loaded from recipes.txt, displays ingredient requirements with live stock,
 // and handles keyboard interaction to prepare dishes.
@@ -22,7 +24,7 @@ public:
     void setSelectedIndex(int idx) { m_selectedIndex = idx; }
 
     // Handles keyboard navigation (Arrow keys / WASD / Enter / Space / Escape)
-    void handleInput(const Input& input, Inventory& inventory, CookingSystem& cookingSystem, HUD* hud = nullptr);
+    void handleInput(const Input& input, Inventory& inventory, CookingSystem& cookingSystem, HUD* hud = nullptr, AudioSystem* audio = nullptr);
 
     // Renders the cooking modal overlay, recipes list, ingredient checklist, and dish icons
     void render(Renderer& renderer, const Inventory& inventory, const CookingSystem& cookingSystem) const;

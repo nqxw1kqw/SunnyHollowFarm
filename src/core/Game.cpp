@@ -107,6 +107,9 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
     // Initialize farmhouse interior room map
     m_interiorMap.initInterior();
 
+    // Initialize audio system (SDL2_mixer)
+    m_audio.init();
+
     // Wire auto-save whenever player sleeps (Milestone 6 / Part C)
     m_timeSystem.setOnSleepCallback([this]() {
         saveGame();
@@ -136,6 +139,7 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
 }
 
 void Game::cleanUp() {
+    m_audio.cleanUp();
     m_assets.cleanUp();
     m_renderer.cleanUp();
 
@@ -218,6 +222,11 @@ void Game::startTransition(TransitionAction action) {
     m_transitionAction = action;
     m_fadePhase = FadePhase::FadeOut;
     m_fadeTimer = 0.0f;
+    if (action == TransitionAction::EnterHouse || action == TransitionAction::ExitHouse) {
+        m_audio.playSFX(SFX::Door);
+    } else if (action == TransitionAction::Sleep) {
+        m_audio.playSFX(SFX::Sleep);
+    }
 }
 
 void Game::updateTransition(float dt) {
@@ -284,6 +293,7 @@ void Game::resetGame() {
     m_map.initDefault();
     m_interiorMap.initInterior();
     m_farmSystem.clearCrops();
+    m_audio.setMuted(false);
     m_fadePhase = FadePhase::None;
     m_transitionAction = TransitionAction::None;
     m_fadeTimer = 0.0f;
@@ -303,27 +313,39 @@ void Game::handleInput() {
         return;
     }
 
+    // Audio mute toggle key [M]
+    if (m_input.isKeyPressed(SDL_SCANCODE_M)) {
+        bool muted = m_audio.toggleMute();
+        m_hud.showFeedback(muted ? "AUDIO MUTED" : "AUDIO UNMUTED", 1.5f);
+        std::cout << "[Audio] Key M pressed: " << (muted ? "MUTED" : "UNMUTED") << std::endl;
+    }
+
     // Inventory toggle key (Tab or I)
     if (m_input.isKeyPressed(SDL_SCANCODE_TAB) || m_input.isKeyPressed(SDL_SCANCODE_I)) {
         m_inventoryUI.toggle();
+        if (m_inventoryUI.isOpen()) {
+            m_audio.playSFX(SFX::UIOpen);
+        } else {
+            m_audio.playSFX(SFX::UIConfirm);
+        }
         std::cout << "[UI] Inventory modal " << (m_inventoryUI.isOpen() ? "OPENED" : "CLOSED") << std::endl;
     }
 
     // When the inventory grid is open, pass input to the modal and pause world interaction
     if (m_inventoryUI.isOpen()) {
-        m_inventoryUI.handleInput(m_input, m_inventory);
+        m_inventoryUI.handleInput(m_input, m_inventory, &m_audio);
         return;
     }
 
     // When the cooking UI modal is open, pass input to it and pause world interaction
     if (m_cookingUI.isOpen()) {
-        m_cookingUI.handleInput(m_input, m_inventory, m_cookingSystem, &m_hud);
+        m_cookingUI.handleInput(m_input, m_inventory, m_cookingSystem, &m_hud, &m_audio);
         return;
     }
 
     // When the shop UI modal is open, pass input to it and pause world interaction
     if (m_shopUI.isOpen()) {
-        m_shopUI.handleInput(m_input, m_inventory, m_shopSystem, &m_hud);
+        m_shopUI.handleInput(m_input, m_inventory, m_shopSystem, &m_hud, &m_audio);
         return;
     }
 
@@ -383,6 +405,7 @@ void Game::handleInput() {
                 }
                 if (type == TileType::Stove) {
                     m_cookingUI.open();
+                    m_audio.playSFX(SFX::UIOpen);
                     std::cout << "[Interior] Opened indoor kitchen stove at (" << tx << ", " << ty << ")." << std::endl;
                     return;
                 }
@@ -421,6 +444,7 @@ void Game::handleInput() {
         // 1. Stove kitchen interaction point check
         if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Stove) {
             m_cookingUI.open();
+            m_audio.playSFX(SFX::UIOpen);
             std::cout << "[Stove] Opened cooking interface at (" << tx << ", " << ty << ")." << std::endl;
             return;
         }
@@ -429,6 +453,7 @@ void Game::handleInput() {
         if ((tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY()) ||
             (tx >= 13 && tx <= 15 && ty == 1)) {
             m_shopUI.open(ShopMode::Buy);
+            m_audio.playSFX(SFX::UIOpen);
             std::cout << "[Shop] Opened Seller NPC shop at (" << tx << ", " << ty << ")." << std::endl;
             return;
         }
@@ -437,6 +462,7 @@ void Game::handleInput() {
         if ((tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY()) ||
             (tx >= 16 && tx <= 18 && ty == 1)) {
             m_shopUI.open(ShopMode::Sell);
+            m_audio.playSFX(SFX::UIOpen);
             std::cout << "[Shop] Opened Buyer NPC shop at (" << tx << ", " << ty << ")." << std::endl;
             return;
         }
@@ -456,7 +482,7 @@ void Game::handleInput() {
         }
 
         // 5. Farming interaction
-        m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud);
+        m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud, &m_audio);
     }
 }
 
@@ -971,6 +997,14 @@ void Game::update(float dt) {
             assert(m_map.getTile(8, 6).getType() == TileType::WateredSoil && "Soil state must be WateredSoil");
             assert(m_map.getTile(8, 6).isWatered() && "Watered flag must be true");
 
+            // Verify mute persistence in save file
+            m_audio.setMuted(true);
+            saveGame(testSaveFile);
+            m_audio.setMuted(false);
+            loadGame(testSaveFile);
+            assert(m_audio.isMuted() && "Mute state must be restored as true");
+            m_audio.setMuted(false);
+
             // Clean up test save file
             SaveSystem::removeSave(testSaveFile);
             assert(!SaveSystem::exists(testSaveFile) && "Test save file must be deleted");
@@ -986,6 +1020,38 @@ void Game::update(float dt) {
             assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == Config::INITIAL_TOMATO_SEEDS);
 
             std::cout << "[Smoke Test] Save / Load verified: save -> scramble -> load restored day (6), wallet (375G), inventory (4 Tomato, 2 Bread, 5 WheatSeeds), crop plot (8, 6 Wheat Growing on WateredSoil), and F9 reset verified!" << std::endl;
+        } else if (m_smokeTestFrames == 152) {
+            // PART A AudioSystem verification:
+            // 1. Audio init under dummy driver
+            assert(m_audio.isAvailable() && "AudioSystem should be available under dummy driver");
+
+            // 2. Mute toggle flips state
+            assert(!m_audio.isMuted() && "Audio starts unmuted by default");
+            bool muted1 = m_audio.toggleMute();
+            assert(muted1 && m_audio.isMuted() && "Audio should be muted after first toggle");
+            bool muted2 = m_audio.toggleMute();
+            assert(!muted2 && !m_audio.isMuted() && "Audio should be unmuted after second toggle");
+
+            // 3. Every SFX trigger path is safe with audio disabled
+            m_audio.setAvailable(false);
+            const SFX sfxList[] = {
+                SFX::Till, SFX::Water, SFX::Plant, SFX::Harvest,
+                SFX::CookSuccess, SFX::CookFail, SFX::Buy, SFX::Sell,
+                SFX::Sleep, SFX::UIOpen, SFX::UIConfirm, SFX::Door
+            };
+            for (SFX sfx : sfxList) {
+                m_audio.playSFX(sfx);
+            }
+            m_audio.playMusic();
+            m_audio.stopMusic();
+            m_audio.setAvailable(true);
+
+            // 4. Safe with audio enabled under dummy sink
+            for (SFX sfx : sfxList) {
+                m_audio.playSFX(sfx);
+            }
+
+            std::cout << "[Smoke Test] AudioSystem verified: dummy init clean, mute toggle flips state, and every SFX trigger path safe with audio disabled!" << std::endl;
         }
     }
 }

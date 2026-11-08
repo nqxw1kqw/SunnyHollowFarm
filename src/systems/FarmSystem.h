@@ -8,6 +8,8 @@
 #include "core/Renderer.h"
 #include <vector>
 
+class AudioSystem;
+
 // Core farming simulation system: handles tilling, watering, planting, growing, and harvesting.
 // Enforces energy costs and provides feedback on exhausted stamina.
 class FarmSystem {
@@ -20,20 +22,20 @@ public:
     const Crop* findCrop(int tileX, int tileY) const;
 
     // Tills grassy or dry dirt into farmable tilled soil (costs Config::ENERGY_COST_TILL).
-    bool till(int tileX, int tileY, Map& map, Player& player, HUD* hud = nullptr);
+    bool till(int tileX, int tileY, Map& map, Player& player, HUD* hud = nullptr, AudioSystem* audio = nullptr);
 
     // Waters tilled soil, speeding up plant growth (costs Config::ENERGY_COST_WATER).
-    bool water(int tileX, int tileY, Map& map, Player& player, HUD* hud = nullptr);
+    bool water(int tileX, int tileY, Map& map, Player& player, HUD* hud = nullptr, AudioSystem* audio = nullptr);
 
     // Plants a seed from inventory onto tilled soil (costs Config::ENERGY_COST_PLANT).
     // If seedType is Empty, defaults to using the activeTool (TomatoSeeds or WheatSeeds).
-    bool plant(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud = nullptr, ItemType seedType = ItemType::Empty);
+    bool plant(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud = nullptr, ItemType seedType = ItemType::Empty, AudioSystem* audio = nullptr);
 
     // Harvests a ripe crop, adding produce to inventory (costs Config::ENERGY_COST_HARVEST).
-    bool harvest(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud = nullptr);
+    bool harvest(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud = nullptr, AudioSystem* audio = nullptr);
 
     // Context-sensitive interaction using the player's active tool or harvesting mature crops.
-    bool interact(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud = nullptr);
+    bool interact(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud = nullptr, AudioSystem* audio = nullptr);
 
     // Advances growth of all planted crops. Watered tiles yield a 2.5x growth rate boost.
     void update(float dt, Map& map);

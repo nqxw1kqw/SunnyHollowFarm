@@ -1,4 +1,5 @@
 #include "systems/FarmSystem.h"
+#include "systems/AudioSystem.h"
 #include <iostream>
 #include <algorithm>
 
@@ -24,7 +25,7 @@ const Crop* FarmSystem::findCrop(int tileX, int tileY) const {
     return nullptr;
 }
 
-bool FarmSystem::till(int tileX, int tileY, Map& map, Player& player, HUD* hud) {
+bool FarmSystem::till(int tileX, int tileY, Map& map, Player& player, HUD* hud, AudioSystem* audio) {
     if (!map.inBounds(tileX, tileY)) return false;
 
     Tile& tile = map.getTile(tileX, tileY);
@@ -44,12 +45,15 @@ bool FarmSystem::till(int tileX, int tileY, Map& map, Player& player, HUD* hud) 
 
     tile.setType(TileType::TilledSoil);
     player.consumeEnergy(Config::ENERGY_COST_TILL);
+    if (audio) {
+        audio->playSFX(SFX::Till);
+    }
     std::cout << "[Farm] Tilled soil at (" << tileX << ", " << tileY
               << ") [Energy: " << player.getEnergy() << "/" << player.getMaxEnergy() << "]" << std::endl;
     return true;
 }
 
-bool FarmSystem::water(int tileX, int tileY, Map& map, Player& player, HUD* hud) {
+bool FarmSystem::water(int tileX, int tileY, Map& map, Player& player, HUD* hud, AudioSystem* audio) {
     if (!map.inBounds(tileX, tileY)) return false;
 
     Tile& tile = map.getTile(tileX, tileY);
@@ -69,13 +73,16 @@ bool FarmSystem::water(int tileX, int tileY, Map& map, Player& player, HUD* hud)
 
     tile.setType(TileType::WateredSoil);
     player.consumeEnergy(Config::ENERGY_COST_WATER);
+    if (audio) {
+        audio->playSFX(SFX::Water);
+    }
     std::cout << "[Farm] Watered soil at (" << tileX << ", " << tileY
               << ") [Growth Boost Active] [Energy: " << player.getEnergy()
               << "/" << player.getMaxEnergy() << "]" << std::endl;
     return true;
 }
 
-bool FarmSystem::plant(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud, ItemType seedType) {
+bool FarmSystem::plant(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud, ItemType seedType, AudioSystem* audio) {
     if (!map.inBounds(tileX, tileY)) return false;
 
     // Determine seed to plant
@@ -122,6 +129,9 @@ bool FarmSystem::plant(int tileX, int tileY, Map& map, Inventory& inventory, Pla
     m_crops.emplace_back(tileX, tileY, cropProduce);
     inventory.removeItem(seedType, 1);
     player.consumeEnergy(Config::ENERGY_COST_PLANT);
+    if (audio) {
+        audio->playSFX(SFX::Plant);
+    }
 
     std::cout << "[Farm] Planted " << itemTypeToString(seedType) << " at (" << tileX << ", " << tileY
               << ") [Seeds remaining: " << inventory.getItemCount(seedType)
@@ -129,7 +139,7 @@ bool FarmSystem::plant(int tileX, int tileY, Map& map, Inventory& inventory, Pla
     return true;
 }
 
-bool FarmSystem::harvest(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud) {
+bool FarmSystem::harvest(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud, AudioSystem* audio) {
     (void)map;
     auto it = std::find_if(m_crops.begin(), m_crops.end(), [tileX, tileY](const Crop& c) {
         return c.getTileX() == tileX && c.getTileY() == tileY;
@@ -161,6 +171,9 @@ bool FarmSystem::harvest(int tileX, int tileY, Map& map, Inventory& inventory, P
     m_crops.erase(it);
     inventory.addItem(harvestItem, 1);
     player.consumeEnergy(Config::ENERGY_COST_HARVEST);
+    if (audio) {
+        audio->playSFX(SFX::Harvest);
+    }
 
     std::cout << "[Farm] Harvested ripe " << itemTypeToString(harvestItem)
               << "! [Total " << itemTypeToString(harvestItem) << " in inventory: "
@@ -169,31 +182,31 @@ bool FarmSystem::harvest(int tileX, int tileY, Map& map, Inventory& inventory, P
     return true;
 }
 
-bool FarmSystem::interact(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud) {
+bool FarmSystem::interact(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud, AudioSystem* audio) {
     if (!map.inBounds(tileX, tileY)) return false;
 
     // 1. If there is a mature crop ready to pick, harvest it immediately
     Crop* existingCrop = findCrop(tileX, tileY);
     if (existingCrop && existingCrop->isMature()) {
-        return harvest(tileX, tileY, map, inventory, player, hud);
+        return harvest(tileX, tileY, map, inventory, player, hud, audio);
     }
 
     // 2. Otherwise apply the currently selected tool
     switch (inventory.activeTool) {
         case ToolType::Hoe:
-            return till(tileX, tileY, map, player, hud);
+            return till(tileX, tileY, map, player, hud, audio);
 
         case ToolType::WateringCan:
-            return water(tileX, tileY, map, player, hud);
+            return water(tileX, tileY, map, player, hud, audio);
 
         case ToolType::TomatoSeeds:
-            return plant(tileX, tileY, map, inventory, player, hud, ItemType::TomatoSeeds);
+            return plant(tileX, tileY, map, inventory, player, hud, ItemType::TomatoSeeds, audio);
 
         case ToolType::WheatSeeds:
-            return plant(tileX, tileY, map, inventory, player, hud, ItemType::WheatSeeds);
+            return plant(tileX, tileY, map, inventory, player, hud, ItemType::WheatSeeds, audio);
 
         case ToolType::CarrotSeeds:
-            return plant(tileX, tileY, map, inventory, player, hud, ItemType::CarrotSeeds);
+            return plant(tileX, tileY, map, inventory, player, hud, ItemType::CarrotSeeds, audio);
 
         case ToolType::Salad:
         case ToolType::Bread: {

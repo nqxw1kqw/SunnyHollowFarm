@@ -272,6 +272,7 @@ bool SaveSystem::save(const Game& game, const std::string& filepath) {
     ss << "  \"day\": " << game.getTimeSystem().getDay() << ",\n";
     ss << "  \"wallet\": " << game.getInventory().getMoney() << ",\n";
     ss << "  \"energy\": " << game.getPlayer().getEnergy() << ",\n";
+    ss << "  \"muted\": " << (game.getAudioSystem().isMuted() ? "true" : "false") << ",\n";
 
     // Player
     ss << "  \"player\": {\n";
@@ -372,6 +373,11 @@ bool SaveSystem::load(Game& game, const std::string& filepath) {
     // 3. Restore player energy
     if (const JsonValue* energyVal = root.get("energy")) {
         game.getPlayer().setEnergy(energyVal->asInt(Config::INITIAL_ENERGY));
+    }
+
+    // Restore mute setting
+    if (const JsonValue* muteVal = root.get("muted")) {
+        game.getAudioSystem().setMuted(muteVal->asBool(false));
     }
 
     // 4. Restore player position, facing, location

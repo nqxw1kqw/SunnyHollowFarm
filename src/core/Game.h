@@ -17,6 +17,7 @@
 #include "systems/ShopSystem.h"
 #include "ui/ShopUI.h"
 #include "systems/TimeSystem.h"
+#include "systems/AudioSystem.h"
 
 enum class Location {
     Farm,
@@ -72,6 +73,8 @@ public:
     const NPC& getBuyerNPC() const { return m_buyerNPC; }
     const TimeSystem& getTimeSystem() const { return m_timeSystem; }
     TimeSystem& getTimeSystem() { return m_timeSystem; }
+    const AudioSystem& getAudioSystem() const { return m_audio; }
+    AudioSystem& getAudioSystem() { return m_audio; }
 
     Location getLocation() const { return m_location; }
     void setLocation(Location loc) { m_location = loc; }
@@ -127,6 +130,7 @@ private:
     NPC m_sellerNPC{14, 2, NPCType::Seller, "Bram the Merchant"};
     NPC m_buyerNPC{17, 2, NPCType::Buyer, "Silas the Produce Buyer"};
     TimeSystem m_timeSystem;
+    AudioSystem m_audio;
     HUD m_hud;
     InventoryUI m_inventoryUI;
     CookingUI m_cookingUI;

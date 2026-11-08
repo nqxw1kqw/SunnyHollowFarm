@@ -2,12 +2,15 @@
 #include "ui/BitmapFont.h"
 #include <iostream>
 
-void ShopUI::handleInput(const Input& input, Inventory& inventory, ShopSystem& shopSystem, HUD* hud) {
+#include "systems/AudioSystem.h"
+
+void ShopUI::handleInput(const Input& input, Inventory& inventory, ShopSystem& shopSystem, HUD* hud, AudioSystem* audio) {
     if (!m_isOpen) return;
 
     // Close on Escape or E
     if (input.isKeyPressed(SDL_SCANCODE_ESCAPE) || input.isKeyPressed(SDL_SCANCODE_E)) {
         close();
+        if (audio) audio->playSFX(SFX::UIConfirm);
         return;
     }
 
@@ -19,6 +22,7 @@ void ShopUI::handleInput(const Input& input, Inventory& inventory, ShopSystem& s
         input.isKeyPressed(SDL_SCANCODE_D)) {
         m_mode = (m_mode == ShopMode::Buy) ? ShopMode::Sell : ShopMode::Buy;
         m_selectedIndex = 0;
+        if (audio) audio->playSFX(SFX::UIConfirm);
         return;
     }
 
@@ -29,9 +33,11 @@ void ShopUI::handleInput(const Input& input, Inventory& inventory, ShopSystem& s
     // Navigate with Up/Down or W/S
     if (input.isKeyPressed(SDL_SCANCODE_UP) || input.isKeyPressed(SDL_SCANCODE_W)) {
         m_selectedIndex = (m_selectedIndex - 1 + itemCount) % itemCount;
+        if (audio) audio->playSFX(SFX::UIConfirm);
     }
     if (input.isKeyPressed(SDL_SCANCODE_DOWN) || input.isKeyPressed(SDL_SCANCODE_S)) {
         m_selectedIndex = (m_selectedIndex + 1) % itemCount;
+        if (audio) audio->playSFX(SFX::UIConfirm);
     }
 
     // Transact with Enter, Space, B, or S
@@ -41,9 +47,9 @@ void ShopUI::handleInput(const Input& input, Inventory& inventory, ShopSystem& s
         input.isKeyPressed(SDL_SCANCODE_S)) {
         ItemType chosenItem = catalog[m_selectedIndex];
         if (m_mode == ShopMode::Buy) {
-            shopSystem.buyItem(chosenItem, 1, inventory, hud);
+            shopSystem.buyItem(chosenItem, 1, inventory, hud, audio);
         } else {
-            shopSystem.sellItem(chosenItem, 1, inventory, hud);
+            shopSystem.sellItem(chosenItem, 1, inventory, hud, audio);
         }
     }
 }

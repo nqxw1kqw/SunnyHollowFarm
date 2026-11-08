@@ -155,10 +155,13 @@ bool CookingSystem::canCook(const Recipe& recipe, const Inventory& inventory, st
     return true;
 }
 
-bool CookingSystem::cook(int recipeIndex, Inventory& inventory, HUD* hud) {
+#include "systems/AudioSystem.h"
+
+bool CookingSystem::cook(int recipeIndex, Inventory& inventory, HUD* hud, AudioSystem* audio) {
     const Recipe* r = getRecipe(recipeIndex);
     if (!r) {
         std::cerr << "[CookingSystem] Error: Invalid recipe index " << recipeIndex << std::endl;
+        if (audio) audio->playSFX(SFX::CookFail);
         return false;
     }
 
@@ -168,6 +171,7 @@ bool CookingSystem::cook(int recipeIndex, Inventory& inventory, HUD* hud) {
         if (hud) {
             hud->showFeedback("MISSING INGREDIENTS!");
         }
+        if (audio) audio->playSFX(SFX::CookFail);
         return false;
     }
 
@@ -183,6 +187,7 @@ bool CookingSystem::cook(int recipeIndex, Inventory& inventory, HUD* hud) {
         if (hud) {
             hud->showFeedback("INVENTORY FULL!");
         }
+        if (audio) audio->playSFX(SFX::CookFail);
         return false;
     }
 
@@ -195,6 +200,7 @@ bool CookingSystem::cook(int recipeIndex, Inventory& inventory, HUD* hud) {
     inventory.addItem(r->result, 1);
 
     std::cout << "[CookingSystem] Successfully cooked 1x " << r->dishName << "!" << std::endl;
+    if (audio) audio->playSFX(SFX::CookSuccess);
     if (hud) {
         std::string msg = "COOKED: " + r->dishName + "!";
         std::transform(msg.begin(), msg.end(), msg.begin(), ::toupper);
@@ -204,12 +210,13 @@ bool CookingSystem::cook(int recipeIndex, Inventory& inventory, HUD* hud) {
     return true;
 }
 
-bool CookingSystem::cook(ItemType dish, Inventory& inventory, HUD* hud) {
+bool CookingSystem::cook(ItemType dish, Inventory& inventory, HUD* hud, AudioSystem* audio) {
     for (int i = 0; i < static_cast<int>(m_recipes.size()); ++i) {
         if (m_recipes[i].result == dish) {
-            return cook(i, inventory, hud);
+            return cook(i, inventory, hud, audio);
         }
     }
     std::cerr << "[CookingSystem] Error: No recipe found for " << itemTypeToString(dish) << std::endl;
+    if (audio) audio->playSFX(SFX::CookFail);
     return false;
 }

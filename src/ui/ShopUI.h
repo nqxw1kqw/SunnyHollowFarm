@@ -12,6 +12,8 @@ enum class ShopMode {
     Sell  // Buyer NPC mode: selling produce and prepared dishes
 };
 
+class AudioSystem;
+
 // Interactive shop interface for trading with Seller and Buyer NPCs.
 class ShopUI {
 public:
@@ -36,7 +38,7 @@ public:
     void setSelectedIndex(int idx) { m_selectedIndex = idx; }
 
     // Handles keyboard inputs (Arrow keys / WASD / Enter / Space / Tab / Escape)
-    void handleInput(const Input& input, Inventory& inventory, ShopSystem& shopSystem, HUD* hud = nullptr);
+    void handleInput(const Input& input, Inventory& inventory, ShopSystem& shopSystem, HUD* hud = nullptr, AudioSystem* audio = nullptr);
 
     // Renders the shop modal window, item list, wallet balance, and buy/sell tabs
     void render(Renderer& renderer, const Inventory& inventory, const ShopSystem& shopSystem) const;

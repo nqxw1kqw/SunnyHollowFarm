@@ -19,9 +19,24 @@ The save file uses standard JSON formatted with the following top-level keys:
 | `day` | Integer | Current in-game day counter (starts at 1). |
 | `wallet` | Integer | Farmer's currency balance in Gold (G). |
 | `energy` | Integer | Farmer's current stamina/energy (0 to 100). |
+| `muted` | Boolean | Audio mute state (`true` if muted, `false` otherwise). |
 | `player` | Object | Player position, orientation, and active scene. |
 | `inventory` | Object | Active hotbar tool selection and container slot contents. |
 | `crop_field` | Array | Full state of farm plots, soil hydration, and planted crops. |
+
+## Audio System (SDL2_mixer)
+
+### Overview
+- **Background Music:** Looping pastoral chiptune background music track (`assets/audio/music.wav`).
+- **Sound Effects (SFX):** Audio feedback for farming actions (till, water, plant, harvest), cooking (success jingle, failure buzz), merchant trading (buy chime, sell register), resting (sleep chime), door transitions (door creak), and UI interactions (open modal, confirm/navigate).
+- **Mute Toggle (Key M):** Pressing **M** toggles audio mute, displaying on-screen HUD feedback (`AUDIO MUTED` / `AUDIO UNMUTED`). The mute setting is persisted across sessions in `savegame.json`.
+- **Headless / Robust Runtime:** Audio is fully optional at runtime. If no audio hardware or driver is present (e.g. running under `SDL_AUDIODRIVER=dummy`), the engine runs completely silently without errors or crashes.
+- **Audio Assets & CC0 Licensing:** All sound effects and music are 100% public domain (CC0 1.0 Universal) generated procedurally via `tools/generate_audio.py`. Complete attribution and technical details are recorded in `assets/audio/CREDITS.md`.
+
+### Packaging & Runtime Dependencies
+For standalone packaging or distribution, ensure the following runtime libraries are bundled or installed:
+- **Linux:** `libSDL2_mixer-2.0.so.0` (provided by Debian/Ubuntu `libsdl2-mixer-2.0-0`)
+- **Windows:** `SDL2_mixer.dll`
 
 #### `player` Object Keys
 - `x` (Float): Farmer X coordinate in world pixels.

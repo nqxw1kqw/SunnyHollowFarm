@@ -4,6 +4,8 @@
 #include "core/Input.h"
 #include "entities/Inventory.h"
 
+class AudioSystem;
+
 // Interactive inventory modal grid UI displaying all 18 storage slots,
 // item counts, visual placeholder icons, detailed item descriptions, and coin wallet.
 class InventoryUI {
@@ -23,7 +25,7 @@ public:
     }
 
     // Handles keyboard navigation (Arrow keys / WASD / Tab / I / Escape)
-    void handleInput(const Input& input, Inventory& inventory);
+    void handleInput(const Input& input, Inventory& inventory, AudioSystem* audio = nullptr);
 
     // Renders the modal overlay, slot grid, icons, and item details panel
     void render(Renderer& renderer, const Inventory& inventory) const;
