@@ -2,6 +2,7 @@
 #include "ui/BitmapFont.h"
 #include <iostream>
 #include <cassert>
+#include <cmath>
 
 Game::~Game() {
     cleanUp();
