@@ -102,7 +102,7 @@
       32,
       32
     ],
-    "processing": "Crop to recorded alpha>=128 bounds; resize directly to final_size with Image.Resampling.NEAREST; quantize RGB to process_assets.py PALETTE without dithering; threshold alpha at 128."
+    "processing": "Crop to recorded alpha>=128 bounds; resize directly to final_size with Image.Resampling.NEAREST; quantize RGB to process_assets.py PALETTE without dithering; threshold alpha at 128. Remap opaque black (unused padded palette entry) to the closest actual shared palette color."
   },
   {
     "filename": "ui_sleep_icon.png",
