@@ -220,7 +220,7 @@ void Game::handleInput() {
         return;
     }
 
-    // Tool hotbar selection keys [1], [2], [3], [4]
+    // Tool / Item hotbar selection keys [1] through [8]
     if (m_input.isKeyPressed(SDL_SCANCODE_1)) {
         m_inventory.activeTool = ToolType::Hoe;
         std::cout << "[Tool Selected] Hoe" << std::endl;
@@ -235,6 +235,22 @@ void Game::handleInput() {
         m_inventory.activeTool = ToolType::WheatSeeds;
         std::cout << "[Tool Selected] Wheat Seeds (Stock: "
                   << m_inventory.getItemCount(ItemType::WheatSeeds) << ")" << std::endl;
+    } else if (m_input.isKeyPressed(SDL_SCANCODE_5)) {
+        m_inventory.activeTool = ToolType::CarrotSeeds;
+        std::cout << "[Tool Selected] Carrot Seeds (Stock: "
+                  << m_inventory.getItemCount(ItemType::CarrotSeeds) << ")" << std::endl;
+    } else if (m_input.isKeyPressed(SDL_SCANCODE_6)) {
+        m_inventory.activeTool = ToolType::Tomato;
+        std::cout << "[Tool Selected] Tomato (Stock: "
+                  << m_inventory.getItemCount(ItemType::Tomato) << ")" << std::endl;
+    } else if (m_input.isKeyPressed(SDL_SCANCODE_7)) {
+        m_inventory.activeTool = ToolType::Salad;
+        std::cout << "[Tool Selected] Salad (Stock: "
+                  << m_inventory.getItemCount(ItemType::Salad) << ")" << std::endl;
+    } else if (m_input.isKeyPressed(SDL_SCANCODE_8)) {
+        m_inventory.activeTool = ToolType::Bread;
+        std::cout << "[Tool Selected] Bread (Stock: "
+                  << m_inventory.getItemCount(ItemType::Bread) << ")" << std::endl;
     }
 
     // Action key (Space, E, Return, or C)
@@ -632,6 +648,14 @@ void Game::update(float dt) {
             std::cout << "[Smoke Test] Player continuous movement verified: speed=" << Player::MOVE_SPEED
                       << " px/s, collision 20x24 at feet, rested at non-tile-aligned coordinate ("
                       << m_player.getX() << ", " << m_player.getY() << ")!" << std::endl;
+        } else if (m_smokeTestFrames == 147) {
+            // Verify hotbar layout constant is in the bottom region of the 640x480 screen
+            assert(HUD::HOTBAR_SLOT_COUNT == 8);
+            assert(HUD::HOTBAR_Y >= 360 && "Hotbar layout constant must be in the bottom region of the 640x480 screen");
+            assert(HUD::HOTBAR_Y + HUD::HOTBAR_SLOT_SIZE <= Config::SCREEN_HEIGHT);
+            assert(HUD::HOTBAR_X == (Config::SCREEN_WIDTH - HUD::HOTBAR_TOTAL_WIDTH) / 2);
+            std::cout << "[Smoke Test] Hotbar bottom layout verified: Y=" << HUD::HOTBAR_Y
+                      << ", slots=" << HUD::HOTBAR_SLOT_COUNT << ", centered at X=" << HUD::HOTBAR_X << "!" << std::endl;
         }
     }
 }

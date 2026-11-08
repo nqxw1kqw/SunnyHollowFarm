@@ -17,7 +17,15 @@ public:
     // Displays an on-screen warning or notification banner.
     void showFeedback(const std::string& message, float duration = 2.0f);
 
-    // Renders all HUD components including day counter.
+    // Hotbar layout constants (located in bottom region of 640x480 screen)
+    static constexpr int HOTBAR_SLOT_COUNT = 8;
+    static constexpr int HOTBAR_SLOT_SIZE = 34;
+    static constexpr int HOTBAR_SLOT_SPACING = 4;
+    static constexpr int HOTBAR_TOTAL_WIDTH = HOTBAR_SLOT_COUNT * HOTBAR_SLOT_SIZE + (HOTBAR_SLOT_COUNT - 1) * HOTBAR_SLOT_SPACING; // 300
+    static constexpr int HOTBAR_X = (Config::SCREEN_WIDTH - HOTBAR_TOTAL_WIDTH) / 2; // 170 (bottom-center)
+    static constexpr int HOTBAR_Y = 432; // Bottom region
+
+    // Renders all HUD components including day counter and bottom hotbar.
     void render(Renderer& renderer, const Inventory& inventory, const Player& player, int currentDay = 1) const;
 
     // Checks if a feedback banner is currently visible.

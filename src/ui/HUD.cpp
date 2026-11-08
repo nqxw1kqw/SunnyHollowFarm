@@ -18,10 +18,19 @@ void HUD::showFeedback(const std::string& message, float duration) {
 }
 
 void HUD::drawToolIcon(Renderer& renderer, ToolType type, int x, int y) const {
-    const char* sprite = type == ToolType::Hoe ? "tool_hoe.png" :
-                         type == ToolType::WateringCan ? "tool_watering_can.png" :
-                         type == ToolType::TomatoSeeds ? "item_seed_packet.png" : nullptr;
+    const char* sprite = nullptr;
+    switch (type) {
+        case ToolType::Hoe:         sprite = "tool_hoe.png"; break;
+        case ToolType::WateringCan: sprite = "tool_watering_can.png"; break;
+        case ToolType::TomatoSeeds:
+        case ToolType::WheatSeeds:
+        case ToolType::CarrotSeeds: sprite = "item_seed_packet.png"; break;
+        case ToolType::Tomato:      sprite = "item_tomato.png"; break;
+        case ToolType::Salad:       sprite = "item_salad.png"; break;
+        case ToolType::Bread:       sprite = "item_bread.png"; break;
+    }
     if (sprite && renderer.drawSprite(sprite, x, y, 26, 26)) return;
+
     switch (type) {
         case ToolType::Hoe: {
             // Wooden handle
@@ -45,23 +54,28 @@ void HUD::drawToolIcon(Renderer& renderer, ToolType type, int x, int y) const {
             renderer.drawRect(x + 22, y + 6, 3, 4, SDL_Color{200, 220, 240, 255});
             break;
         }
-        case ToolType::TomatoSeeds: {
-            // Seed packet pouch
+        case ToolType::TomatoSeeds:
+        case ToolType::WheatSeeds:
+        case ToolType::CarrotSeeds: {
+            // Seed packet pouch with color-coded emblem
             renderer.drawRect(x + 6, y + 6, 14, 16, SDL_Color{220, 200, 140, 255});
             renderer.drawRect(x + 8, y + 8, 10, 12, SDL_Color{115, 175, 80, 255});
-            // Small red tomato illustration on packet
-            renderer.drawRect(x + 11, y + 12, 4, 4, SDL_Color{230, 45, 35, 255});
-            renderer.drawRect(x + 12, y + 10, 2, 2, SDL_Color{50, 140, 40, 255});
+            SDL_Color emblem = (type == ToolType::TomatoSeeds) ? SDL_Color{230, 45, 35, 255} :
+                               (type == ToolType::WheatSeeds)  ? SDL_Color{240, 215, 60, 255} :
+                               SDL_Color{240, 130, 30, 255};
+            renderer.drawRect(x + 11, y + 11, 4, 5, emblem);
+            renderer.drawRect(x + 12, y + 9, 2, 2, SDL_Color{50, 140, 40, 255});
             break;
         }
-        case ToolType::WheatSeeds: {
-            // Seed packet pouch with golden wheat emblem
-            renderer.drawRect(x + 6, y + 6, 14, 16, SDL_Color{220, 200, 140, 255});
-            renderer.drawRect(x + 8, y + 8, 10, 12, SDL_Color{115, 175, 80, 255});
-            renderer.drawRect(x + 11, y + 11, 4, 5, SDL_Color{240, 215, 60, 255});
-            renderer.drawRect(x + 12, y + 9, 2, 2, SDL_Color{200, 160, 40, 255});
+        case ToolType::Tomato:
+            drawItemPlaceholder(const_cast<Renderer&>(renderer), ItemType::Tomato, x + 2, y + 2, 22);
             break;
-        }
+        case ToolType::Salad:
+            drawItemPlaceholder(const_cast<Renderer&>(renderer), ItemType::Salad, x + 2, y + 2, 22);
+            break;
+        case ToolType::Bread:
+            drawItemPlaceholder(const_cast<Renderer&>(renderer), ItemType::Bread, x + 2, y + 2, 22);
+            break;
     }
 }
 
@@ -96,60 +110,12 @@ void HUD::drawSunIcon(Renderer& renderer, int x, int y) const {
 }
 
 void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& player, int currentDay) const {
-    // 1. Hotbar background panel (top-left)
-    constexpr int HOTBAR_X = 14;
-    constexpr int HOTBAR_Y = 8;
-    constexpr int SLOT_SIZE = 34;
-    constexpr int SLOT_COUNT = 4;
+    // --- TOP HUD: Wallet, Energy, Day, and Bag Hint ---
 
-    renderer.drawRect(HOTBAR_X - 4, HOTBAR_Y - 4,
-                      (SLOT_SIZE * SLOT_COUNT) + 16, SLOT_SIZE + 8,
-                      SDL_Color{25, 20, 18, 220});
-    renderer.drawOutline(HOTBAR_X - 4, HOTBAR_Y - 4,
-                         (SLOT_SIZE * SLOT_COUNT) + 16, SLOT_SIZE + 8,
-                         SDL_Color{170, 140, 95, 255});
-
-    const ToolType tools[SLOT_COUNT] = {
-        ToolType::Hoe,
-        ToolType::WateringCan,
-        ToolType::TomatoSeeds,
-        ToolType::WheatSeeds
-    };
-
-    for (int i = 0; i < SLOT_COUNT; ++i) {
-        int slotX = HOTBAR_X + i * (SLOT_SIZE + 4);
-        int slotY = HOTBAR_Y;
-        bool isSelected = (inventory.activeTool == tools[i]);
-
-        SDL_Color slotBg = isSelected ? SDL_Color{85, 65, 40, 240} : SDL_Color{45, 38, 32, 220};
-        renderer.drawRect(slotX, slotY, SLOT_SIZE, SLOT_SIZE, slotBg);
-        renderer.drawSprite("ui_slot.png", slotX, slotY, SLOT_SIZE, SLOT_SIZE);
-
-        drawToolIcon(renderer, tools[i], slotX + 4, slotY + 4);
-
-        // Key number (1, 2, 3, 4) in top-left
-        BitmapFont::drawNumber(renderer, i + 1, slotX + 3, slotY + 3, SDL_Color{240, 230, 200, 255}, 1);
-
-        // Seed count for seed tools
-        if (tools[i] == ToolType::TomatoSeeds) {
-            int seedCount = inventory.getItemCount(ItemType::TomatoSeeds);
-            BitmapFont::drawNumber(renderer, seedCount, slotX + 18, slotY + 20, SDL_Color{255, 245, 140, 255}, 2);
-        } else if (tools[i] == ToolType::WheatSeeds) {
-            int seedCount = inventory.getItemCount(ItemType::WheatSeeds);
-            BitmapFont::drawNumber(renderer, seedCount, slotX + 18, slotY + 20, SDL_Color{255, 245, 140, 255}, 2);
-        }
-
-        SDL_Color borderCol = isSelected ? SDL_Color{255, 220, 70, 255} : SDL_Color{110, 90, 70, 255};
-        renderer.drawOutline(slotX, slotY, SLOT_SIZE, SLOT_SIZE, borderCol);
-        if (isSelected) {
-            renderer.drawOutline(slotX - 1, slotY - 1, SLOT_SIZE + 2, SLOT_SIZE + 2, SDL_Color{255, 245, 120, 200});
-        }
-    }
-
-    // 2. Money / Wallet counter panel
-    constexpr int COIN_PANEL_X = 168;
+    // 1. Money / Wallet counter panel (top-left)
+    constexpr int COIN_PANEL_X = 14;
     constexpr int COIN_PANEL_Y = 8;
-    constexpr int COIN_PANEL_W = 74;
+    constexpr int COIN_PANEL_W = 86;
     constexpr int COIN_PANEL_H = 38;
 
     renderer.drawRect(COIN_PANEL_X, COIN_PANEL_Y, COIN_PANEL_W, COIN_PANEL_H, SDL_Color{25, 20, 18, 220});
@@ -158,8 +124,8 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     drawCoinIcon(renderer, COIN_PANEL_X + 6, COIN_PANEL_Y + 11);
     BitmapFont::drawNumber(renderer, inventory.getMoney(), COIN_PANEL_X + 26, COIN_PANEL_Y + 14, SDL_Color{255, 235, 140, 255}, 2);
 
-    // 3. Energy / Stamina bar panel
-    constexpr int ENG_PANEL_X = 246;
+    // 2. Energy / Stamina bar panel (top-center-left)
+    constexpr int ENG_PANEL_X = 108;
     constexpr int ENG_PANEL_Y = 8;
     constexpr int ENG_PANEL_W = 142;
     constexpr int ENG_PANEL_H = 38;
@@ -175,7 +141,7 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     constexpr int BAR_MAX_W = 70;
     constexpr int BAR_H = 16;
 
-    renderer.drawRect(BAR_X, BAR_Y, BAR_MAX_W, BAR_H, SDL_Color{45, 25, 25, 255}); // Empty slot background
+    renderer.drawRect(BAR_X, BAR_Y, BAR_MAX_W, BAR_H, SDL_Color{45, 25, 25, 255});
     renderer.drawOutline(BAR_X, BAR_Y, BAR_MAX_W, BAR_H, SDL_Color{110, 90, 70, 255});
 
     float energyRatio = static_cast<float>(player.getEnergy()) / static_cast<float>(player.getMaxEnergy());
@@ -197,7 +163,6 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     // Numerical value of remaining energy
     const SDL_Rect frameSource{0, 0, 32, 16};
     if (renderer.drawSprite("ui_energy_bar.png", BAR_X, BAR_Y, BAR_MAX_W, BAR_H, &frameSource)) {
-        // Fill is stored separately below the frame in the same 32x32 atlas.
         renderer.drawRect(BAR_X + 5, BAR_Y + 4, BAR_MAX_W - 10, 8, SDL_Color{45, 25, 25, 255});
         if (energyRatio > 0.0f) {
             const SDL_Rect fillSource{2, 20, std::max(1, static_cast<int>(28 * energyRatio)), 8};
@@ -208,8 +173,8 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
 
     BitmapFont::drawNumber(renderer, player.getEnergy(), ENG_PANEL_X + 96, ENG_PANEL_Y + 14, SDL_Color{255, 255, 255, 255}, 2);
 
-    // 4. Milestone 6: Day Counter Panel
-    constexpr int DAY_PANEL_X = 392;
+    // 3. Day Counter Panel (top-center)
+    constexpr int DAY_PANEL_X = 258;
     constexpr int DAY_PANEL_Y = 8;
     constexpr int DAY_PANEL_W = 86;
     constexpr int DAY_PANEL_H = 38;
@@ -223,7 +188,7 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     BitmapFont::drawText(renderer, "DAY", DAY_PANEL_X + 26, DAY_PANEL_Y + 8, SDL_Color{255, 225, 120, 255}, 1);
     BitmapFont::drawNumber(renderer, currentDay, DAY_PANEL_X + 26, DAY_PANEL_Y + 19, SDL_Color{255, 255, 255, 255}, 2);
 
-    // 5. Inventory toggle key hint & Harvested produce panel
+    // 4. Inventory toggle key hint & Harvested produce panel (top-right)
     constexpr int PROD_X = 482;
     constexpr int PROD_Y = 8;
     constexpr int PROD_W = 146;
@@ -242,6 +207,65 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     BitmapFont::drawChar(renderer, 'X', tomX + 26, tomY + 6, SDL_Color{230, 215, 180, 255}, 2);
     int tomatoCount = inventory.getItemCount(ItemType::Tomato);
     BitmapFont::drawNumber(renderer, tomatoCount, tomX + 42, tomY + 6, SDL_Color{255, 255, 255, 255}, 2);
+
+    // --- BOTTOM HOTBAR: Tool/Item slots 1-8 (bottom-center) ---
+    const int panelX = HOTBAR_X - 6;
+    const int panelY = HOTBAR_Y - 5;
+    const int panelW = HOTBAR_TOTAL_WIDTH + 12;
+    const int panelH = HOTBAR_SLOT_SIZE + 10;
+
+    bool hasPanel = const_cast<Renderer&>(renderer).drawNineSlice("ui_panel.png", panelX, panelY, panelW, panelH, 3, 3, 3, 3);
+    if (!hasPanel) {
+        renderer.drawRect(panelX, panelY, panelW, panelH, SDL_Color{25, 20, 18, 220});
+        renderer.drawOutline(panelX, panelY, panelW, panelH, SDL_Color{170, 140, 95, 255});
+    }
+
+    const ToolType tools[HOTBAR_SLOT_COUNT] = {
+        ToolType::Hoe,
+        ToolType::WateringCan,
+        ToolType::TomatoSeeds,
+        ToolType::WheatSeeds,
+        ToolType::CarrotSeeds,
+        ToolType::Tomato,
+        ToolType::Salad,
+        ToolType::Bread
+    };
+
+    for (int i = 0; i < HOTBAR_SLOT_COUNT; ++i) {
+        int slotX = HOTBAR_X + i * (HOTBAR_SLOT_SIZE + HOTBAR_SLOT_SPACING);
+        int slotY = HOTBAR_Y;
+        bool isSelected = (inventory.activeTool == tools[i]);
+
+        SDL_Color slotBg = isSelected ? SDL_Color{85, 65, 40, 240} : SDL_Color{45, 38, 32, 220};
+        renderer.drawRect(slotX, slotY, HOTBAR_SLOT_SIZE, HOTBAR_SLOT_SIZE, slotBg);
+        renderer.drawSprite("ui_slot.png", slotX, slotY, HOTBAR_SLOT_SIZE, HOTBAR_SLOT_SIZE);
+
+        drawToolIcon(renderer, tools[i], slotX + 4, slotY + 4);
+
+        // Key number (1..8) in top-left
+        BitmapFont::drawNumber(renderer, i + 1, slotX + 3, slotY + 3, SDL_Color{240, 230, 200, 255}, 1);
+
+        // Quantity count for items / seeds
+        int count = -1;
+        switch (tools[i]) {
+            case ToolType::TomatoSeeds: count = inventory.getItemCount(ItemType::TomatoSeeds); break;
+            case ToolType::WheatSeeds:  count = inventory.getItemCount(ItemType::WheatSeeds); break;
+            case ToolType::CarrotSeeds: count = inventory.getItemCount(ItemType::CarrotSeeds); break;
+            case ToolType::Tomato:      count = inventory.getItemCount(ItemType::Tomato); break;
+            case ToolType::Salad:       count = inventory.getItemCount(ItemType::Salad); break;
+            case ToolType::Bread:       count = inventory.getItemCount(ItemType::Bread); break;
+            default: break;
+        }
+        if (count >= 0) {
+            BitmapFont::drawNumber(renderer, count, slotX + 18, slotY + 20, SDL_Color{255, 245, 140, 255}, 2);
+        }
+
+        SDL_Color borderCol = isSelected ? SDL_Color{255, 220, 70, 255} : SDL_Color{110, 90, 70, 255};
+        renderer.drawOutline(slotX, slotY, HOTBAR_SLOT_SIZE, HOTBAR_SLOT_SIZE, borderCol);
+        if (isSelected) {
+            renderer.drawOutline(slotX - 1, slotY - 1, HOTBAR_SLOT_SIZE + 2, HOTBAR_SLOT_SIZE + 2, SDL_Color{255, 245, 120, 200});
+        }
+    }
 
     // 6. On-screen Feedback Banner (e.g. "NOT ENOUGH ENERGY!")
     if (m_feedbackTimer > 0.0f) {

@@ -5,12 +5,16 @@
 #include "core/GameConfig.h"
 #include "entities/Item.h"
 
-// Types of tools the farmer can hold on the primary hotbar.
+// Types of tools and items the farmer can hold on the primary 8-slot hotbar.
 enum class ToolType {
     Hoe = 0,
     WateringCan = 1,
     TomatoSeeds = 2,
-    WheatSeeds = 3
+    WheatSeeds = 3,
+    CarrotSeeds = 4,
+    Tomato = 5,
+    Salad = 6,
+    Bread = 7
 };
 
 // Represents a single item container slot in the inventory grid.

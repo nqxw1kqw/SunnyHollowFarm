@@ -191,6 +191,33 @@ bool FarmSystem::interact(int tileX, int tileY, Map& map, Inventory& inventory, 
 
         case ToolType::WheatSeeds:
             return plant(tileX, tileY, map, inventory, player, hud, ItemType::WheatSeeds);
+
+        case ToolType::CarrotSeeds:
+            return plant(tileX, tileY, map, inventory, player, hud, ItemType::CarrotSeeds);
+
+        case ToolType::Salad:
+        case ToolType::Bread: {
+            ItemType foodItem = (inventory.activeTool == ToolType::Salad) ? ItemType::Salad : ItemType::Bread;
+            if (inventory.getItemCount(foodItem) > 0) {
+                if (player.getEnergy() >= player.getMaxEnergy()) {
+                    if (hud) hud->showFeedback("ENERGY ALREADY FULL!");
+                    return false;
+                }
+                inventory.removeItem(foodItem, 1);
+                player.restoreEnergy(35);
+                if (hud) hud->showFeedback("ATE " + itemTypeToString(foodItem) + "! +35 ENERGY");
+                std::cout << "[Farm] Consumed 1x " << itemTypeToString(foodItem)
+                          << ", restored energy to " << player.getEnergy()
+                          << "/" << player.getMaxEnergy() << std::endl;
+                return true;
+            } else {
+                if (hud) hud->showFeedback("NO " + itemTypeToString(foodItem) + " IN INVENTORY!");
+                return false;
+            }
+        }
+
+        default:
+            break;
     }
 
     return false;
