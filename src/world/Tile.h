@@ -16,7 +16,8 @@ public:
         return m_type != TileType::Water &&
                m_type != TileType::Fence &&
                m_type != TileType::Farmhouse &&
-               m_type != TileType::Stove;
+               m_type != TileType::Stove &&
+               m_type != TileType::ShopStall;
     }
 
     // Dirt or grass can be tilled using a hoe.

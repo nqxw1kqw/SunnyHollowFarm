@@ -28,6 +28,9 @@ set(SOURCES
     src/ui/InventoryUI.cpp
     src/systems/CookingSystem.cpp
     src/ui/CookingUI.cpp
+    src/entities/NPC.cpp
+    src/systems/ShopSystem.cpp
+    src/ui/ShopUI.cpp
 )
 
 add_executable(sunny_hollow_farm ${SOURCES})

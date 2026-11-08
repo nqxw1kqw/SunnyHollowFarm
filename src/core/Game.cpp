@@ -45,6 +45,9 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode) {
     // Initialize cooking recipes from assets/data/recipes.txt
     m_cookingSystem.loadRecipes("assets/data/recipes.txt");
 
+    // Initialize shop prices from assets/data/prices.txt
+    m_shopSystem.loadPrices("assets/data/prices.txt");
+
     m_isRunning = true;
     std::cout << "Sunny Hollow Farm initialized successfully (" << width << "x" << height << ")" << std::endl;
     if (m_smokeTestMode) {
@@ -86,7 +89,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 135) {
+                if (m_smokeTestFrames >= 140) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -122,6 +125,12 @@ void Game::handleInput() {
         return;
     }
 
+    // When the shop UI modal is open, pass input to it and pause world interaction
+    if (m_shopUI.isOpen()) {
+        m_shopUI.handleInput(m_input, m_inventory, m_shopSystem, &m_hud);
+        return;
+    }
+
     // Tool hotbar selection keys [1], [2], [3], [4]
     if (m_input.isKeyPressed(SDL_SCANCODE_1)) {
         m_inventory.activeTool = ToolType::Hoe;
@@ -153,7 +162,21 @@ void Game::handleInput() {
             return;
         }
 
-        // 2. Farming interaction
+        // 2. Seller NPC interaction check
+        if (tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY()) {
+            m_shopUI.open(ShopMode::Buy);
+            std::cout << "[Shop] Opened Seller NPC shop at (" << tx << ", " << ty << ")." << std::endl;
+            return;
+        }
+
+        // 3. Buyer NPC interaction check
+        if (tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY()) {
+            m_shopUI.open(ShopMode::Sell);
+            std::cout << "[Shop] Opened Buyer NPC shop at (" << tx << ", " << ty << ")." << std::endl;
+            return;
+        }
+
+        // 4. Farming interaction
         m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud);
     }
 }
@@ -163,7 +186,7 @@ void Game::update(float dt) {
     m_hud.update(dt);
 
     // Player movements and world physics only progress if modals are closed
-    if (!m_inventoryUI.isOpen() && !m_cookingUI.isOpen()) {
+    if (!m_inventoryUI.isOpen() && !m_cookingUI.isOpen() && !m_shopUI.isOpen()) {
         m_player.update(dt, m_input, m_map);
     }
     m_farmSystem.update(dt, m_map);
@@ -291,6 +314,81 @@ void Game::update(float dt) {
             m_cookingUI.close();
             assert(!m_cookingUI.isOpen() && "CookingUI should close");
             std::cout << "[Smoke Test] Stove interaction tile & CookingUI toggle verified!" << std::endl;
+        } else if (m_smokeTestFrames == 130) {
+            // Milestone 5: Verify price file parsing and buying seeds from Seller NPC
+            assert(m_shopSystem.getBuyPrice(ItemType::TomatoSeeds) == 15);
+            assert(m_shopSystem.getBuyPrice(ItemType::WheatSeeds) == 10);
+            assert(m_shopSystem.getBuyPrice(ItemType::Wheat) == 18);
+            assert(m_shopSystem.getSellPrice(ItemType::Salad) == 40);
+            assert(m_shopSystem.getSellPrice(ItemType::Bread) == 50);
+
+            // Purchase Tomato Seeds (cost 15G)
+            int moneyBefore = m_inventory.getMoney();
+            int tomatoSeedsBefore = m_inventory.getItemCount(ItemType::TomatoSeeds);
+            bool buyOk = m_shopSystem.buyItem(ItemType::TomatoSeeds, 1, m_inventory, &m_hud);
+            assert(buyOk && "Buying tomato seeds from Seller NPC should succeed");
+            assert(m_inventory.getMoney() == moneyBefore - 15);
+            assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == tomatoSeedsBefore + 1);
+            std::cout << "[Smoke Test] Shop Buy verified: bought Tomato Seeds for 15G (Wallet: "
+                      << m_inventory.getMoney() << "G, Seeds: "
+                      << m_inventory.getItemCount(ItemType::TomatoSeeds) << ")" << std::endl;
+
+            // Verify refusal when coins are insufficient
+            m_inventory.setMoney(5);
+            bool failBuy = m_shopSystem.buyItem(ItemType::TomatoSeeds, 1, m_inventory, &m_hud);
+            assert(!failBuy && "Purchase must fail when coins are insufficient");
+            assert(m_inventory.getMoney() == 5 && "Wallet must be unchanged on refused buy");
+            assert(m_hud.hasActiveFeedback());
+            std::cout << "[Smoke Test] Shop Buy refusal verified: 5G < 15G -> refused with feedback banner!" << std::endl;
+            m_inventory.setMoney(moneyBefore - 15); // Restore valid wallet balance
+
+            // Purchase 2x Wheat Seeds (cost 20G)
+            int wheatSeedsBefore = m_inventory.getItemCount(ItemType::WheatSeeds);
+            int currentMoney = m_inventory.getMoney();
+            bool buyWheatOk = m_shopSystem.buyItem(ItemType::WheatSeeds, 2, m_inventory, &m_hud);
+            assert(buyWheatOk && "Buying 2x Wheat Seeds should succeed");
+            assert(m_inventory.getMoney() == currentMoney - 20);
+            assert(m_inventory.getItemCount(ItemType::WheatSeeds) == wheatSeedsBefore + 2);
+            std::cout << "[Smoke Test] Shop Buy verified: bought 2x Wheat Seeds for 20G (Wallet: "
+                      << m_inventory.getMoney() << "G)" << std::endl;
+        } else if (m_smokeTestFrames == 135) {
+            // Milestone 5: Verify selling produce and dishes to Buyer NPC
+            int moneyBeforeSell = m_inventory.getMoney();
+            assert(m_inventory.getItemCount(ItemType::Salad) == 1);
+            bool sellSaladOk = m_shopSystem.sellItem(ItemType::Salad, 1, m_inventory, &m_hud);
+            assert(sellSaladOk && "Selling Salad to Buyer NPC should succeed");
+            assert(m_inventory.getItemCount(ItemType::Salad) == 0 && "Salad must be removed from inventory");
+            assert(m_inventory.getMoney() == moneyBeforeSell + 40 && "Wallet must increase by 40G");
+            std::cout << "[Smoke Test] Shop Sell verified: sold 1x Salad for +40G (Wallet: "
+                      << m_inventory.getMoney() << "G)" << std::endl;
+
+            // Sell Bread (payout +50G)
+            moneyBeforeSell = m_inventory.getMoney();
+            assert(m_inventory.getItemCount(ItemType::Bread) == 1);
+            bool sellBreadOk = m_shopSystem.sellItem(ItemType::Bread, 1, m_inventory, &m_hud);
+            assert(sellBreadOk && "Selling Bread to Buyer NPC should succeed");
+            assert(m_inventory.getItemCount(ItemType::Bread) == 0 && "Bread must be removed");
+            assert(m_inventory.getMoney() == moneyBeforeSell + 50 && "Wallet must increase by 50G");
+            std::cout << "[Smoke Test] Shop Sell verified: sold 1x Bread for +50G (Wallet: "
+                      << m_inventory.getMoney() << "G)" << std::endl;
+
+            // Verify refusal when selling item not in inventory
+            bool failSell = m_shopSystem.sellItem(ItemType::Salad, 1, m_inventory, &m_hud);
+            assert(!failSell && "Selling item not in inventory must fail");
+            assert(m_hud.hasActiveFeedback());
+            std::cout << "[Smoke Test] Shop Sell refusal verified: 0 items refused with feedback banner!" << std::endl;
+
+            // Verify NPC placements and ShopUI toggle
+            assert(m_sellerNPC.getTileX() == 14 && m_sellerNPC.getTileY() == 2);
+            assert(m_buyerNPC.getTileX() == 17 && m_buyerNPC.getTileY() == 2);
+            assert(!m_shopUI.isOpen());
+            m_shopUI.open(ShopMode::Buy);
+            assert(m_shopUI.isOpen() && m_shopUI.getMode() == ShopMode::Buy);
+            m_shopUI.setMode(ShopMode::Sell);
+            assert(m_shopUI.getMode() == ShopMode::Sell);
+            m_shopUI.close();
+            assert(!m_shopUI.isOpen());
+            std::cout << "[Smoke Test] Seller/Buyer NPCs and ShopUI modal verified!" << std::endl;
         }
     }
 }
@@ -305,20 +403,29 @@ void Game::render() {
     // 2. Render planted crops
     m_farmSystem.render(m_renderer);
 
-    // 3. Render farmer player
+    // 3. Render merchant NPCs (Seller and Buyer)
+    m_sellerNPC.render(m_renderer);
+    m_buyerNPC.render(m_renderer);
+
+    // 4. Render farmer player
     m_player.render(m_renderer);
 
-    // 4. Render HUD (hotbar, money counter, energy bar, inventory hint, tomato counter, feedback banner)
+    // 5. Render HUD (hotbar, money counter, energy bar, inventory hint, tomato counter, feedback banner)
     m_hud.render(m_renderer, m_inventory, m_player);
 
-    // 5. Render Inventory Grid modal when open
+    // 6. Render Inventory Grid modal when open
     if (m_inventoryUI.isOpen()) {
         m_inventoryUI.render(m_renderer, m_inventory);
     }
 
-    // 6. Render Cooking UI modal when open
+    // 7. Render Cooking UI modal when open
     if (m_cookingUI.isOpen()) {
         m_cookingUI.render(m_renderer, m_inventory, m_cookingSystem);
+    }
+
+    // 8. Render Shop UI modal when open
+    if (m_shopUI.isOpen()) {
+        m_shopUI.render(m_renderer, m_inventory, m_shopSystem);
     }
 
     // Present final frame buffer

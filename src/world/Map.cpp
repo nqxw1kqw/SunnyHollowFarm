@@ -47,6 +47,11 @@ void Map::initDefault() {
 
     // 6. Kitchen Stove interaction point at (4, 2) on the farmhouse patio
     m_tiles[getIndex(4, 2)] = Tile(TileType::Stove);
+
+    // 7. Market Shop Stalls in top-right (x=13..15 for Seller stall, x=16..18 for Buyer stall at y=1)
+    for (int x = 13; x <= 18; ++x) {
+        m_tiles[getIndex(x, 1)] = Tile(TileType::ShopStall);
+    }
 }
 
 bool Map::inBounds(int tileX, int tileY) const {
@@ -81,7 +86,8 @@ bool Map::isAreaWalkable(float x, float y, float w, float h) const {
 
     for (int ty = startTileY; ty <= endTileY; ++ty) {
         for (int tx = startTileX; tx <= endTileX; ++tx) {
-            if (!getTile(tx, ty).isWalkable()) {
+            // Block walking through solid tiles or NPC merchant positions (14, 2) and (17, 2)
+            if (!getTile(tx, ty).isWalkable() || ((tx == 14 || tx == 17) && ty == 2)) {
                 return false;
             }
         }
@@ -210,6 +216,34 @@ void Map::render(Renderer& renderer) const {
                     // Steam puffs
                     renderer.drawRect(px + 12, py - 2, 2, 2, SDL_Color{230, 235, 245, 200});
                     renderer.drawRect(px + 16, py - 4, 3, 2, SDL_Color{230, 235, 245, 200});
+                    break;
+                }
+                case TileType::ShopStall: {
+                    // Grass base under stall
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{88, 155, 60, 255});
+
+                    // Wooden counter table surface & support posts
+                    renderer.drawRect(px + 2, py + 18, 28, 12, SDL_Color{145, 95, 50, 255});
+                    renderer.drawOutline(px + 2, py + 18, 28, 12, SDL_Color{105, 65, 30, 255});
+                    renderer.drawRect(px + 4, py + 10, 4, 18, SDL_Color{120, 75, 35, 255});
+                    renderer.drawRect(px + 24, py + 10, 4, 18, SDL_Color{120, 75, 35, 255});
+
+                    // Festive market awning canopy
+                    bool isSeller = (tx <= 15);
+                    SDL_Color primaryColor = isSeller ? SDL_Color{215, 45, 40, 255} : SDL_Color{45, 115, 200, 255};
+                    SDL_Color stripeColor = isSeller ? SDL_Color{245, 240, 230, 255} : SDL_Color{250, 215, 65, 255};
+
+                    // Draw striped canopy top
+                    renderer.drawRect(px, py + 2, TILE_SIZE, 12, primaryColor);
+                    renderer.drawRect(px + 6, py + 2, 6, 12, stripeColor);
+                    renderer.drawRect(px + 20, py + 2, 6, 12, stripeColor);
+                    renderer.drawOutline(px, py + 2, TILE_SIZE, 12, SDL_Color{70, 50, 40, 255});
+
+                    // Scalloped canopy drape fringe
+                    for (int f = 0; f < 4; ++f) {
+                        SDL_Color fringeCol = (f % 2 == 0) ? primaryColor : stripeColor;
+                        renderer.drawRect(px + f * 8, py + 14, 8, 3, fringeCol);
+                    }
                     break;
                 }
             }

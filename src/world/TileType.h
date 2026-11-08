@@ -9,5 +9,6 @@ enum class TileType {
     Water,          // Pond water (impassable)
     Fence,          // Boundary wooden fence (impassable)
     Farmhouse,      // Farmhouse exterior & bed/rest structure (impassable)
-    Stove           // Kitchen stove cooking interaction point (impassable)
+    Stove,          // Kitchen stove cooking interaction point (impassable)
+    ShopStall       // Market canopy and wooden merchant counter (impassable)
 };

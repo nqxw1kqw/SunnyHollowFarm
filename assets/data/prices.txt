@@ -1,0 +1,20 @@
+# Sunny Hollow Farm - Economy & Price Catalog
+#
+# Price File Format:
+# - Each item pricing is defined on a single line:
+#   <ItemName> = Buy:<BuyPrice>, Sell:<SellPrice>
+# - Lines starting with '#' and blank lines are ignored as comments.
+# - BuyPrice is the cost to purchase from the Seller NPC.
+# - SellPrice is the coin payout when sold to the Buyer NPC.
+#
+# Seeds & Basics (Seller NPC)
+TomatoSeeds = Buy:15, Sell:8
+CarrotSeeds = Buy:20, Sell:10
+WheatSeeds  = Buy:10, Sell:5
+Wheat       = Buy:18, Sell:14
+
+# Fresh Produce & Kitchen Dishes (Buyer NPC)
+Tomato = Buy:25, Sell:20
+Carrot = Buy:30, Sell:24
+Salad  = Buy:50, Sell:40
+Bread  = Buy:60, Sell:50
