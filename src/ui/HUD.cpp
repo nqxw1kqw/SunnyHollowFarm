@@ -109,8 +109,22 @@ void HUD::drawSunIcon(Renderer& renderer, int x, int y) const {
     renderer.drawRect(x + 15, y + 8, 2, 2, SDL_Color{255, 185, 30, 255});
 }
 
-void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& player, int currentDay) const {
-    // --- TOP HUD: Wallet, Energy, Day, and Bag Hint ---
+void HUD::drawRainIcon(Renderer& renderer, int x, int y) const {
+    // Rain cloud body (soft cool slate blue-gray)
+    SDL_Color cloudColor{160, 185, 215, 255};
+    renderer.drawRect(x + 3, y + 4, 10, 6, cloudColor);
+    renderer.drawRect(x + 5, y + 2, 6, 2, cloudColor);
+    renderer.drawRect(x + 1, y + 6, 2, 4, cloudColor);
+    renderer.drawRect(x + 13, y + 6, 2, 4, cloudColor);
+    // Rain streaks / drops (bright sky blue)
+    SDL_Color dropColor{100, 180, 255, 255};
+    renderer.drawLine(x + 3, y + 12, x + 2, y + 15, dropColor);
+    renderer.drawLine(x + 8, y + 12, x + 7, y + 15, dropColor);
+    renderer.drawLine(x + 13, y + 12, x + 12, y + 15, dropColor);
+}
+
+void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& player, int currentDay, Weather weather) const {
+    // --- TOP HUD: Wallet, Energy, Day, Weather, and Bag Hint ---
 
     // 1. Money / Wallet counter panel (top-left)
     constexpr int COIN_PANEL_X = 14;
@@ -187,6 +201,23 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     }
     BitmapFont::drawText(renderer, "DAY", DAY_PANEL_X + 26, DAY_PANEL_Y + 8, SDL_Color{255, 225, 120, 255}, 1);
     BitmapFont::drawNumber(renderer, currentDay, DAY_PANEL_X + 26, DAY_PANEL_Y + 19, SDL_Color{255, 255, 255, 255}, 2);
+
+    // 3b. Weather Indicator Panel (top-center, right next to Day Counter)
+    constexpr int WEATH_PANEL_X = 348;
+    constexpr int WEATH_PANEL_Y = 8;
+    constexpr int WEATH_PANEL_W = 46;
+    constexpr int WEATH_PANEL_H = 38;
+
+    renderer.drawRect(WEATH_PANEL_X, WEATH_PANEL_Y, WEATH_PANEL_W, WEATH_PANEL_H, SDL_Color{25, 20, 18, 220});
+    renderer.drawOutline(WEATH_PANEL_X, WEATH_PANEL_Y, WEATH_PANEL_W, WEATH_PANEL_H, SDL_Color{170, 140, 95, 255});
+
+    if (weather == Weather::Rainy) {
+        drawRainIcon(renderer, WEATH_PANEL_X + 14, WEATH_PANEL_Y + 5);
+        BitmapFont::drawText(renderer, "RAIN", WEATH_PANEL_X + 11, WEATH_PANEL_Y + 24, SDL_Color{140, 200, 255, 255}, 1);
+    } else {
+        drawSunIcon(renderer, WEATH_PANEL_X + 14, WEATH_PANEL_Y + 5);
+        BitmapFont::drawText(renderer, "SUN", WEATH_PANEL_X + 14, WEATH_PANEL_Y + 24, SDL_Color{255, 225, 120, 255}, 1);
+    }
 
     // 4. Inventory toggle key hint & Harvested produce panel (top-right)
     constexpr int PROD_X = 482;

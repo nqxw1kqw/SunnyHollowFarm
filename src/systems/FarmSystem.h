@@ -5,7 +5,7 @@
 #include "entities/Inventory.h"
 #include "entities/Player.h"
 #include "ui/HUD.h"
-#include "core/Renderer.h"
+#include "systems/Weather.h"
 #include <vector>
 
 class AudioSystem;
@@ -38,10 +38,14 @@ public:
     bool interact(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud = nullptr, AudioSystem* audio = nullptr);
 
     // Advances growth of all planted crops. Watered tiles yield a 2.5x growth rate boost.
-    void update(float dt, Map& map);
+    // If weather is Rainy, all outdoor planted crops count as watered.
+    void update(float dt, Map& map, Weather weather = Weather::Sunny);
 
-    // Overnight day advancement: grows crops and dries watered soil.
-    void advanceDay(Map& map);
+    // Overnight day advancement: grows crops and updates soil hydration per weather.
+    void advanceDay(Map& map, Weather weather = Weather::Sunny);
+
+    // Hydrates all outdoor plots with planted crops to WateredSoil due to rainfall.
+    void applyRain(Map& map);
 
     // Renders all active crops onto the map.
     void render(Renderer& renderer) const;

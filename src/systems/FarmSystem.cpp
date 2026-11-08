@@ -239,7 +239,17 @@ bool FarmSystem::interact(int tileX, int tileY, Map& map, Inventory& inventory, 
     return false;
 }
 
-void FarmSystem::advanceDay(Map& map) {
+void FarmSystem::applyRain(Map& map) {
+    for (const auto& crop : m_crops) {
+        int tx = crop.getTileX();
+        int ty = crop.getTileY();
+        if (map.inBounds(tx, ty)) {
+            map.setTileType(tx, ty, TileType::WateredSoil);
+        }
+    }
+}
+
+void FarmSystem::advanceDay(Map& map, Weather weather) {
     // 1. Advance all active crops overnight by 1 growth stage
     for (auto& crop : m_crops) {
         crop.advanceStage();
@@ -254,10 +264,20 @@ void FarmSystem::advanceDay(Map& map) {
         }
     }
 
-    std::cout << "[Farm] Overnight growth complete: crops advanced 1 stage, watered soil dried back to tilled soil." << std::endl;
+    // 3. On a rainy day, rainfall hydrates all outdoor planted crop plots
+    if (weather == Weather::Rainy) {
+        applyRain(map);
+    }
+
+    std::cout << "[Farm] Overnight growth complete: crops advanced 1 stage, weather is "
+              << weatherToString(weather) << "." << std::endl;
 }
 
-void FarmSystem::update(float dt, Map& map) {
+void FarmSystem::update(float dt, Map& map, Weather weather) {
+    if (weather == Weather::Rainy) {
+        applyRain(map);
+    }
+
     for (auto& crop : m_crops) {
         float speedMultiplier = 1.0f;
         if (map.inBounds(crop.getTileX(), crop.getTileY())) {

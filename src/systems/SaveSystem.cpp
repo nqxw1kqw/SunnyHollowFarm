@@ -1,6 +1,7 @@
 #include "systems/SaveSystem.h"
 #include "core/Game.h"
 #include "world/TileType.h"
+#include "systems/Weather.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
@@ -273,6 +274,7 @@ bool SaveSystem::save(const Game& game, const std::string& filepath) {
     ss << "  \"wallet\": " << game.getInventory().getMoney() << ",\n";
     ss << "  \"energy\": " << game.getPlayer().getEnergy() << ",\n";
     ss << "  \"muted\": " << (game.getAudioSystem().isMuted() ? "true" : "false") << ",\n";
+    ss << "  \"weather\": \"" << weatherToString(game.getTimeSystem().getWeather()) << "\",\n";
 
     // Player
     ss << "  \"player\": {\n";
@@ -362,15 +364,22 @@ bool SaveSystem::load(Game& game, const std::string& filepath) {
 
     // 1. Restore day
     if (const JsonValue* dayVal = root.get("day")) {
-        game.getTimeSystem().setDay(dayVal->asInt(1));
+        game.getTimeSystem().setDay(dayVal->asInt(1), false);
     }
 
-    // 2. Restore wallet
+    // 2. Restore weather
+    if (const JsonValue* weatherVal = root.get("weather")) {
+        game.getTimeSystem().setWeather(stringToWeather(weatherVal->asString("Sunny")));
+    } else {
+        game.getTimeSystem().setWeather(calculateWeatherForDay(game.getTimeSystem().getDay()));
+    }
+
+    // 3. Restore wallet
     if (const JsonValue* walletVal = root.get("wallet")) {
         game.getInventory().setMoney(walletVal->asInt(Config::INITIAL_MONEY));
     }
 
-    // 3. Restore player energy
+    // 4. Restore player energy
     if (const JsonValue* energyVal = root.get("energy")) {
         game.getPlayer().setEnergy(energyVal->asInt(Config::INITIAL_ENERGY));
     }

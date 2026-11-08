@@ -115,6 +115,8 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
         saveGame();
     });
 
+    initRainParticles();
+
     // On launch, load the save if one exists; otherwise start the standard new game.
     if (!m_smokeTestMode && !m_playtestMode) {
         if (SaveSystem::exists()) {
@@ -152,6 +154,7 @@ void Game::cleanUp() {
     if (m_smokeTestMode || m_playtestMode) {
         SaveSystem::removeSave("smoke_save.json");
         SaveSystem::removeSave("savegame.json");
+        SaveSystem::removeSave("test_weather_save.json");
     }
 
     SDL_Quit();
@@ -177,7 +180,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 154) {
+                if (m_smokeTestFrames >= 155) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -557,7 +560,11 @@ void Game::update(float dt) {
     if (!isInputLocked() && !m_inventoryUI.isOpen() && !m_cookingUI.isOpen() && !m_shopUI.isOpen()) {
         m_player.update(dt, m_input, activeMap);
     }
-    m_farmSystem.update(dt, m_map);
+    if (m_location == Location::Farm && m_timeSystem.getWeather() == Weather::Rainy) {
+        updateRainParticles(dt);
+    }
+    Weather outdoorWeather = (m_location == Location::Farm) ? m_timeSystem.getWeather() : Weather::Sunny;
+    m_farmSystem.update(dt, m_map, outdoorWeather);
 
     // Zone transition check: door transitions trigger by overlapping the door tile
     if (m_location == Location::Farm) {
@@ -1169,7 +1176,104 @@ void Game::update(float dt) {
             m_inventoryUI.close();
 
             std::cout << "[Smoke Test] Eating food verified: exact energy additions (Salad +25, Bread +35), clamping at 100, full-energy refusal retains items!" << std::endl;
+        } else if (m_smokeTestFrames == 154) {
+            // PART C Weather verification:
+            // 1. Assert deterministic seeded weather roll across days:
+            assert(calculateWeatherForDay(1) == Weather::Sunny);
+            assert(calculateWeatherForDay(2) == Weather::Sunny);
+            assert(calculateWeatherForDay(3) == Weather::Sunny);
+            assert(calculateWeatherForDay(4) == Weather::Sunny);
+            assert(calculateWeatherForDay(5) == Weather::Sunny);
+            assert(calculateWeatherForDay(6) == Weather::Rainy);
+            assert(calculateWeatherForDay(7) == Weather::Sunny);
+            assert(calculateWeatherForDay(8) == Weather::Rainy);
+
+            // 2. Weather roll on day set & sleep:
+            m_timeSystem.setDay(6);
+            assert(m_timeSystem.getWeather() == Weather::Rainy && "Day 6 must roll Rainy");
+            m_timeSystem.setDay(7);
+            assert(m_timeSystem.getWeather() == Weather::Sunny && "Day 7 must roll Sunny");
+
+            // 3. Test outdoor planted crop watering on Rainy day (boost without manual watering)
+            m_timeSystem.setDay(6); // Rainy
+            assert(m_timeSystem.getWeather() == Weather::Rainy);
+
+            // Clear any old crops
+            m_farmSystem.clearCrops();
+            // Till a plot at (10, 6)
+            m_map.setTileType(10, 6, TileType::TilledSoil);
+            m_inventory.addItem(ItemType::TomatoSeeds, 1);
+            m_inventory.activeTool = ToolType::TomatoSeeds;
+            m_player.placeAtTileCenter(10, 7);
+            m_player.setFacing(Direction::Up);
+            bool planted = m_farmSystem.interact(10, 6, m_map, m_inventory, m_player, &m_hud);
+            assert(planted && "Planting on rainy day should succeed");
+
+            // On rainy day, outdoor planted crop tile is watered by rain
+            m_farmSystem.update(0.1f, m_map, m_timeSystem.getWeather());
+            assert(m_map.getTile(10, 6).getType() == TileType::WateredSoil && "Soil must show WateredSoil under rain");
+            assert(m_map.getTile(10, 6).isWatered());
+
+            // Verify 2.5x growth boost applies without manual watering:
+            Crop* crop = m_farmSystem.findCrop(10, 6);
+            assert(crop != nullptr && "Crop must be planted");
+            crop->setStageTimer(0.0f);
+            m_farmSystem.update(1.0f, m_map, m_timeSystem.getWeather());
+            // dt = 1.0f with 2.5x boost -> stageTimer must equal 2.5f
+            assert(std::abs(crop->getStageTimer() - 2.5f) < 0.001f && "Rained crop must receive 2.5x boost without manual watering");
+
+            // 4. Save/Load weather persistence
+            m_timeSystem.setWeather(Weather::Rainy);
+            bool saved = SaveSystem::save(*this, "test_weather_save.json");
+            assert(saved && "Save with Rainy weather should succeed");
+
+            m_timeSystem.setWeather(Weather::Sunny);
+            assert(m_timeSystem.getWeather() == Weather::Sunny);
+
+            bool loaded = SaveSystem::load(*this, "test_weather_save.json");
+            assert(loaded && "Load from weather save should succeed");
+            assert(m_timeSystem.getWeather() == Weather::Rainy && "Weather must be restored as Rainy from save file");
+            SaveSystem::removeSave("test_weather_save.json");
+
+            std::cout << "[Smoke Test] Weather verified: deterministic day roll (Days 1-5 Sunny, Day 6 Rainy), rain auto-watering with 2.5x growth boost, and save/load persistence!" << std::endl;
         }
+    }
+}
+
+void Game::initRainParticles() {
+    m_rainParticles.resize(80);
+    for (size_t i = 0; i < m_rainParticles.size(); ++i) {
+        m_rainParticles[i].x = static_cast<float>((i * 17 + 23) % (Config::SCREEN_WIDTH + 60) - 20);
+        m_rainParticles[i].y = static_cast<float>((i * 29 + 11) % Config::SCREEN_HEIGHT);
+        m_rainParticles[i].speed = 280.0f + static_cast<float>((i * 37) % 120);
+        m_rainParticles[i].length = 8.0f + static_cast<float>((i * 13) % 8);
+    }
+}
+
+void Game::updateRainParticles(float dt) {
+    for (auto& p : m_rainParticles) {
+        p.y += p.speed * dt;
+        p.x -= (p.speed * 0.25f) * dt;
+        if (p.y > static_cast<float>(Config::SCREEN_HEIGHT)) {
+            p.y = -p.length;
+            p.x += 120.0f;
+            if (p.x > static_cast<float>(Config::SCREEN_WIDTH + 20)) {
+                p.x -= static_cast<float>(Config::SCREEN_WIDTH + 40);
+            }
+        }
+        if (p.x < -20.0f) {
+            p.x += static_cast<float>(Config::SCREEN_WIDTH + 40);
+        }
+    }
+}
+
+void Game::renderRainParticles() {
+    for (const auto& p : m_rainParticles) {
+        int x1 = static_cast<int>(p.x);
+        int y1 = static_cast<int>(p.y);
+        int x2 = x1 - 2;
+        int y2 = y1 + static_cast<int>(p.length);
+        m_renderer.drawLine(x1, y1, x2, y2, SDL_Color{160, 205, 245, 180});
     }
 }
 
@@ -1194,6 +1298,11 @@ void Game::render() {
 
     // 4. Render farmer player
     m_player.render(m_renderer);
+
+    // Rain particle overlay outdoors on rainy days (indoor/interior unaffected)
+    if (m_location == Location::Farm && m_timeSystem.getWeather() == Weather::Rainy) {
+        renderRainParticles();
+    }
 
     // World interaction prompts (NPC dialogue, sleep, cooking)
     if (!m_inventoryUI.isOpen() && !m_cookingUI.isOpen() && !m_shopUI.isOpen()) {
@@ -1280,8 +1389,8 @@ void Game::render() {
         }
     }
 
-    // 5. Render HUD with Day Counter
-    m_hud.render(m_renderer, m_inventory, m_player, m_timeSystem.getDay());
+    // 5. Render HUD with Day Counter & Weather Indicator
+    m_hud.render(m_renderer, m_inventory, m_player, m_timeSystem.getDay(), m_timeSystem.getWeather());
 
     // 6. Render Inventory Grid modal when open
     if (m_inventoryUI.isOpen()) {
@@ -1751,7 +1860,51 @@ void Game::updatePlaytest(float dt) {
         assert(m_inventory.getItemCount(ItemType::Salad) == 1);
 
         std::cout << "[PASS] Step 14: Exited farmhouse back to farm: Player positioned outside door at (2, 3) facing Down, game state sane" << std::endl;
-    } else if (m_playtestFrames >= 155) {
+    } else if (m_playtestFrames == 155) {
+        // Step 15: Weather simulation & Rainy day watering verification (Part C)
+        // 1. Plant a Carrot seed on tilled soil at (5, 5) on Day 5 (Sunny)
+        m_map.setTileType(5, 5, TileType::TilledSoil);
+        m_inventory.activeTool = ToolType::CarrotSeeds;
+        m_player.placeAtTileCenter(5, 6);
+        m_player.setFacing(Direction::Up);
+        bool planted = m_farmSystem.interact(5, 5, m_map, m_inventory, m_player, &m_hud);
+        assert(planted && "Carrot seeds planted at (5, 5)");
+        assert(m_map.getTile(5, 5).getType() == TileType::TilledSoil && "Soil must be unwatered tilled soil initially");
+
+        // 2. Sleep overnight from Day 5 to Day 6 (Day 6 rolls deterministically as Rainy)
+        m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+        assert(m_timeSystem.getDay() == 6 && "Day must advance to 6");
+        assert(m_timeSystem.getWeather() == Weather::Rainy && "Day 6 must deterministically roll Weather::Rainy");
+
+        // 3. Verify outdoor planted crop at (5, 5) counts as watered that day without manual watering
+        assert(m_map.getTile(5, 5).getType() == TileType::WateredSoil && "Planted crop soil must show WateredSoil due to rainfall");
+        assert(m_map.getTile(5, 5).isWatered());
+
+        // 4. Verify 2.5x growth boost applies to rained crop without manual watering
+        Crop* carrotCrop = m_farmSystem.findCrop(5, 5);
+        assert(carrotCrop != nullptr && "Carrot crop exists at (5, 5)");
+        carrotCrop->setStageTimer(0.0f);
+        m_farmSystem.update(1.0f, m_map, m_timeSystem.getWeather());
+        assert(std::abs(carrotCrop->getStageTimer() - 2.5f) < 0.001f && "Rained crop must receive 2.5x growth boost without manual watering");
+
+        // 5. Sleep overnight from Day 6 (Rainy) to Day 7 (Sunny)
+        m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+        assert(m_timeSystem.getDay() == 7 && "Day must advance to 7");
+        assert(m_timeSystem.getWeather() == Weather::Sunny && "Day 7 must deterministically roll Weather::Sunny");
+        assert(m_map.getTile(5, 5).getType() == TileType::TilledSoil && "Soil must dry back to TilledSoil on sunny day");
+
+        // 6. Test save/load persistence of weather
+        m_timeSystem.setDay(6);
+        m_timeSystem.setWeather(Weather::Rainy);
+        saveGame();
+        m_timeSystem.setWeather(Weather::Sunny);
+        assert(m_timeSystem.getWeather() == Weather::Sunny);
+        loadGame();
+        assert(m_timeSystem.getWeather() == Weather::Rainy && "Weather::Rainy must be restored on loadGame()");
+        assert(m_timeSystem.getDay() == 6);
+
+        std::cout << "[PASS] Step 15: Weather verified across days: Day 6 Rainy auto-waters crops with 2.5x boost, Day 7 Sunny dries soil, and weather persists in save file!" << std::endl;
+    } else if (m_playtestFrames >= 165) {
         std::cout << "[PASS] Full playthrough playtest and farmhouse interior verifications passed cleanly across "
                   << m_timeSystem.getDay() << " in-game days!" << std::endl;
         m_isRunning = false;

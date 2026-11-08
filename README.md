@@ -20,6 +20,7 @@ The save file uses standard JSON formatted with the following top-level keys:
 | `wallet` | Integer | Farmer's currency balance in Gold (G). |
 | `energy` | Integer | Farmer's current stamina/energy (0 to 100). |
 | `muted` | Boolean | Audio mute state (`true` if muted, `false` otherwise). |
+| `weather` | String | Current daily weather (`"Sunny"` or `"Rainy"`). |
 | `player` | Object | Player position, orientation, and active scene. |
 | `inventory` | Object | Active hotbar tool selection and container slot contents. |
 | `crop_field` | Array | Full state of farm plots, soil hydration, and planted crops. |
@@ -32,6 +33,19 @@ Prepared dishes can be consumed to restore stamina:
   - **Salad:** +25 Energy (displays banner `Ate Salad: +25 Energy`)
   - **Bread:** +35 Energy (displays banner `Ate Bread: +35 Energy`)
 - **Stamina Clamping & Refusal:** Energy is clamped to maximum (100). If the farmer's energy is already full (100/100), consumption is refused with banner `ENERGY ALREADY FULL!`, and the item is retained in inventory.
+
+## Weather System
+
+### Overview
+- **Deterministic Day Roll:** Each new day rolls weather deterministically from the day number using a seeded formula (reproducible in automated tests). Sunny most days, Rainy about 1 day in 3 (~31% occurrence). Specifically, Days 1-5 roll Sunny, Day 6 rolls Rainy, Day 7 rolls Sunny, Day 8 rolls Rainy.
+- **Rainy Days & Automatic Crop Watering:** On a Rainy day:
+  - An animated rain particle overlay falls across outdoor scenes.
+  - All outdoor planted crops automatically count as watered that day: soil displays as `WateredSoil` and the 2.5x growth boost applies continuously without manual watering.
+  - Farmhouse interiors and indoor objects remain completely unaffected.
+- **HUD Weather Indicator:** A dedicated weather indicator badge is positioned directly next to the Day Counter display at the top-center:
+  - **Sunny Day:** Displays a golden sun badge with cardinal rays and "SUN" text label.
+  - **Rainy Day:** Displays a cool blue-gray rain cloud glyph with falling raindrops and "RAIN" text label.
+- **Save / Load Persistence:** Daily weather condition is stored under the top-level `"weather"` key in `savegame.json` and restored on loading.
 
 ## Audio System (SDL2_mixer)
 

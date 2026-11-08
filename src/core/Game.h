@@ -148,4 +148,16 @@ private:
     FadePhase m_fadePhase = FadePhase::None;
     TransitionAction m_transitionAction = TransitionAction::None;
     float m_fadeTimer = 0.0f;
+
+    // Outdoor rain particle overlay
+    struct RainParticle {
+        float x = 0.0f;
+        float y = 0.0f;
+        float speed = 280.0f;
+        float length = 10.0f;
+    };
+    std::vector<RainParticle> m_rainParticles;
+    void initRainParticles();
+    void updateRainParticles(float dt);
+    void renderRainParticles();
 };
