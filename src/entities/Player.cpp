@@ -110,6 +110,10 @@ void Player::render(Renderer& renderer) const {
     const int px = static_cast<int>(m_x);
     const int py = static_cast<int>(m_y);
 
+    const int frames[] = {0, 1, 0, 2};
+    const SDL_Rect source{frames[m_animStep] * 32, static_cast<int>(m_facing) * 32, 32, 32};
+    if (renderer.drawSprite("player_sheet.png", px, py, 32, 32, &source)) return;
+
     // Subtle head bob during walking steps
     const int bob = (m_isMoving && (m_animStep == 1 || m_animStep == 3)) ? -1 : 0;
 

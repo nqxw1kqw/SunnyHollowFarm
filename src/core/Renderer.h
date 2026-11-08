@@ -1,6 +1,9 @@
 #pragma once
 
 #include <SDL.h>
+#include <string>
+
+class AssetManager;
 
 // Thin wrapper around SDL_Renderer providing primitives for placeholder graphics.
 class Renderer {
@@ -27,8 +30,14 @@ public:
     // Draws a line between two points.
     void drawLine(int x1, int y1, int x2, int y2, SDL_Color color);
 
+    void setAssets(AssetManager* assets) { m_assets = assets; }
+    // Returns false when art is missing so callers can keep their placeholder.
+    bool drawSprite(const std::string& filename, int x, int y, int w, int h,
+                    const SDL_Rect* source = nullptr);
+
     SDL_Renderer* getSDLRenderer() const { return m_renderer; }
 
 private:
     SDL_Renderer* m_renderer = nullptr;
+    AssetManager* m_assets = nullptr;
 };

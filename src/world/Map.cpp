@@ -103,6 +103,33 @@ void Map::render(Renderer& renderer) const {
             const int py = ty * TILE_SIZE;
             const Tile& tile = getTile(tx, ty);
 
+            // Source cells follow ASSETS_NOTES.md; collision/interaction tiles stay unchanged.
+            SDL_Rect source{0, 0, 32, 32};
+            const char* sprite = "tiles_ground.png";
+            switch (tile.getType()) {
+                case TileType::Dirt: break;
+                case TileType::TilledSoil: source.x = 32; break;
+                case TileType::Water: source.x = 32; source.y = 32; break;
+                case TileType::WateredSoil: sprite = "tile_tilled_watered.png"; break;
+                case TileType::Fence: sprite = "tiles_fence.png"; break;
+                case TileType::Farmhouse:
+                    sprite = "building_farmhouse.png";
+                    source = {(tx - 1) * 32, (ty - 1) * 32, 32, 32};
+                    break;
+                case TileType::ShopStall:
+                    sprite = "building_shop_stall.png";
+                    source = {((tx - 13) % 3) * 32, 0, 32, 64};
+                    break;
+                case TileType::Stove: sprite = "building_stove.png"; source.h = 64; break;
+                case TileType::Grass: source.y = 32; break;
+            }
+            if (tile.getType() == TileType::Fence || tile.getType() == TileType::Farmhouse ||
+                tile.getType() == TileType::ShopStall || tile.getType() == TileType::Stove) {
+                const SDL_Rect grass{0, 32, 32, 32};
+                renderer.drawSprite("tiles_ground.png", px, py, 32, 32, &grass);
+            }
+            if (renderer.drawSprite(sprite, px, py + 32 - source.h, 32, source.h, &source)) continue;
+
             switch (tile.getType()) {
                 case TileType::Grass: {
                     // Bright, warm green base

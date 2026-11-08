@@ -18,6 +18,10 @@ void HUD::showFeedback(const std::string& message, float duration) {
 }
 
 void HUD::drawToolIcon(Renderer& renderer, ToolType type, int x, int y) const {
+    const char* sprite = type == ToolType::Hoe ? "tool_hoe.png" :
+                         type == ToolType::WateringCan ? "tool_watering_can.png" :
+                         type == ToolType::TomatoSeeds ? "item_seed_packet.png" : nullptr;
+    if (sprite && renderer.drawSprite(sprite, x, y, 26, 26)) return;
     switch (type) {
         case ToolType::Hoe: {
             // Wooden handle
@@ -62,6 +66,7 @@ void HUD::drawToolIcon(Renderer& renderer, ToolType type, int x, int y) const {
 }
 
 void HUD::drawCoinIcon(Renderer& renderer, int x, int y) const {
+    if (renderer.drawSprite("ui_coin.png", x, y, 16, 16)) return;
     // Golden coin with outer rim and inner shine
     renderer.drawRect(x + 2, y, 12, 16, SDL_Color{195, 145, 20, 255});
     renderer.drawRect(x, y + 2, 16, 12, SDL_Color{195, 145, 20, 255});
@@ -118,6 +123,7 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
 
         SDL_Color slotBg = isSelected ? SDL_Color{85, 65, 40, 240} : SDL_Color{45, 38, 32, 220};
         renderer.drawRect(slotX, slotY, SLOT_SIZE, SLOT_SIZE, slotBg);
+        renderer.drawSprite("ui_slot.png", slotX, slotY, SLOT_SIZE, SLOT_SIZE);
 
         drawToolIcon(renderer, tools[i], slotX + 4, slotY + 4);
 
@@ -189,6 +195,17 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     }
 
     // Numerical value of remaining energy
+    const SDL_Rect frameSource{0, 0, 32, 16};
+    if (renderer.drawSprite("ui_energy_bar.png", BAR_X, BAR_Y, BAR_MAX_W, BAR_H, &frameSource)) {
+        // Fill is stored separately below the frame in the same 32x32 atlas.
+        renderer.drawRect(BAR_X + 5, BAR_Y + 4, BAR_MAX_W - 10, 8, SDL_Color{45, 25, 25, 255});
+        if (energyRatio > 0.0f) {
+            const SDL_Rect fillSource{2, 20, std::max(1, static_cast<int>(28 * energyRatio)), 8};
+            renderer.drawSprite("ui_energy_bar.png", BAR_X + 5, BAR_Y + 4,
+                                std::max(1, static_cast<int>((BAR_MAX_W - 10) * energyRatio)), 8, &fillSource);
+        }
+    }
+
     BitmapFont::drawNumber(renderer, player.getEnergy(), ENG_PANEL_X + 96, ENG_PANEL_Y + 14, SDL_Color{255, 255, 255, 255}, 2);
 
     // 4. Milestone 6: Day Counter Panel

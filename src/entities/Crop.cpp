@@ -34,6 +34,12 @@ void Crop::render(Renderer& renderer) const {
 
     bool isWheat = (m_cropType == ItemType::Wheat || m_cropType == ItemType::WheatSeeds);
 
+    if (!isWheat && renderer.drawSprite("tomato_stage" + std::to_string(static_cast<int>(m_stage)) + ".png",
+                                       px, py, 32, 32)) {
+        if (isMature()) renderer.drawSprite("fx_sparkle.png", px + 20, py, 12, 12);
+        return;
+    }
+
     if (isWheat) {
         switch (m_stage) {
             case CropStage::Seed: {

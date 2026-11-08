@@ -45,6 +45,18 @@ const ItemDefinition& getItemDefinition(ItemType type) {
 void drawItemPlaceholder(Renderer& renderer, ItemType type, int x, int y, int size) {
     if (type == ItemType::Empty) return;
 
+    const char* sprite = nullptr;
+    switch (type) {
+        case ItemType::TomatoSeeds: sprite = "item_seed_packet.png"; break;
+        case ItemType::Tomato: sprite = "item_tomato.png"; break;
+        case ItemType::Carrot: sprite = "item_carrot.png"; break;
+        case ItemType::Wheat: sprite = "item_wheat.png"; break;
+        case ItemType::Salad: sprite = "item_salad.png"; break;
+        case ItemType::Bread: sprite = "item_bread.png"; break;
+        default: break;
+    }
+    if (sprite && renderer.drawSprite(sprite, x, y, size, size)) return;
+
     // Scale offset based on standard 32x32 size
     float scale = size / 32.0f;
     auto S = [scale](int val) { return static_cast<int>(val * scale); };

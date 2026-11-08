@@ -8,6 +8,9 @@ void NPC::render(Renderer& renderer) const {
     const int px = m_tileX * Map::TILE_SIZE;
     const int py = m_tileY * Map::TILE_SIZE;
 
+    if (renderer.drawSprite(m_type == NPCType::Seller ? "npc_seller.png" : "npc_buyer.png",
+                            px, py, 32, 32)) return;
+
     // Soft entity drop shadow
     renderer.drawRect(px + 6, py + 26, 20, 4, SDL_Color{20, 20, 20, 100});
 

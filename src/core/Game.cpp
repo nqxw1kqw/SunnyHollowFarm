@@ -42,6 +42,50 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode) {
         std::cerr << "AssetManager initialization warning." << std::endl;
     }
 
+    m_renderer.setAssets(&m_assets);
+    if (m_smokeTestMode) {
+        // Exercise the real PNG loader, including art not visible in the initial scene.
+        struct SpriteCheck { const char* filename; int width; int height; };
+        const SpriteCheck sprites[] = {
+            {"player_sheet.png", 96, 128},
+            {"npc_seller.png", 32, 32},
+            {"npc_buyer.png", 32, 32},
+            {"tiles_ground.png", 64, 64},
+            {"tiles_fence.png", 64, 32},
+            {"tomato_stage1.png", 32, 32},
+            {"tomato_stage2.png", 32, 32},
+            {"tomato_stage3.png", 32, 32},
+            {"tomato_stage4.png", 32, 32},
+            {"item_tomato.png", 32, 32},
+            {"item_carrot.png", 32, 32},
+            {"item_wheat.png", 32, 32},
+            {"item_salad.png", 32, 32},
+            {"item_bread.png", 32, 32},
+            {"tool_hoe.png", 32, 32},
+            {"tool_watering_can.png", 32, 32},
+            {"item_seed_packet.png", 32, 32},
+            {"ui_slot.png", 32, 32},
+            {"ui_coin.png", 32, 32},
+            {"ui_energy_bar.png", 32, 32},
+            {"building_farmhouse.png", 96, 64},
+            {"building_shop_stall.png", 96, 64},
+            {"building_stove.png", 32, 64},
+            {"tile_tilled_watered.png", 32, 32},
+            {"fx_sparkle.png", 32, 32},
+        };
+        for (const auto& sprite : sprites) {
+            SDL_Texture* texture = m_assets.getTexture(std::string("assets/sprites/") + sprite.filename,
+                                                       m_renderer.getSDLRenderer());
+            int w = 0, h = 0;
+            if (!texture || SDL_QueryTexture(texture, nullptr, nullptr, &w, &h) != 0 ||
+                w != sprite.width || h != sprite.height) {
+                std::cerr << "[Smoke Test] PNG load/size failed: " << sprite.filename << std::endl;
+                return false;
+            }
+            std::cout << "[Smoke Test] PNG loaded: " << sprite.filename << " (" << w << "x" << h << ")" << std::endl;
+        }
+    }
+
     // Initialize cooking recipes from assets/data/recipes.txt
     m_cookingSystem.loadRecipes("assets/data/recipes.txt");
 

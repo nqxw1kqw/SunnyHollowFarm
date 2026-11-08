@@ -87,6 +87,7 @@ void InventoryUI::render(Renderer& renderer, const Inventory& inventory) const {
         // Slot interior
         SDL_Color slotBg = isSelected ? SDL_Color{75, 60, 48, 255} : SDL_Color{48, 38, 32, 255};
         renderer.drawRect(sx, sy, SLOT_SIZE, SLOT_SIZE, slotBg);
+        renderer.drawSprite("ui_slot.png", sx, sy, SLOT_SIZE, SLOT_SIZE);
 
         // Slot border
         SDL_Color borderCol = isSelected ? SDL_Color{255, 230, 80, 255} : SDL_Color{95, 78, 62, 255};
