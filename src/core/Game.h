@@ -23,6 +23,19 @@ enum class Location {
     FarmhouseInterior
 };
 
+enum class FadePhase {
+    None,
+    FadeOut,
+    FadeIn
+};
+
+enum class TransitionAction {
+    None,
+    EnterHouse,
+    ExitHouse,
+    Sleep
+};
+
 // Top-level application class orchestrating game setup, fixed-timestep loop, and teardown.
 class Game {
 public:
@@ -68,6 +81,20 @@ public:
     Map& getCurrentMap() { return (m_location == Location::Farm) ? m_map : m_interiorMap; }
     void transitionTo(Location loc);
 
+    // Screen transition fade state machine (~300 ms out + 300 ms in)
+    static constexpr float FADE_OUT_DURATION = 0.3f;
+    static constexpr float FADE_IN_DURATION = 0.3f;
+
+    void startTransition(TransitionAction action);
+    void updateTransition(float dt);
+    void executeTransitionMidpoint();
+    void fastForwardTransition();
+    bool isTransitioning() const { return m_fadePhase != FadePhase::None; }
+    bool isInputLocked() const { return m_fadePhase != FadePhase::None; }
+    FadePhase getFadePhase() const { return m_fadePhase; }
+    TransitionAction getTransitionAction() const { return m_transitionAction; }
+    float getFadeTimer() const { return m_fadeTimer; }
+
 private:
     void handleInput();
     void update(float dt);
@@ -101,4 +128,8 @@ private:
     int m_smokeTestFrames = 0;
     bool m_playtestMode = false;
     int m_playtestFrames = 0;
+
+    FadePhase m_fadePhase = FadePhase::None;
+    TransitionAction m_transitionAction = TransitionAction::None;
+    float m_fadeTimer = 0.0f;
 };

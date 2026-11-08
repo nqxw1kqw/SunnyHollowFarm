@@ -150,7 +150,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 151) {
+                if (m_smokeTestFrames >= 152) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -190,7 +190,66 @@ void Game::transitionTo(Location loc) {
     }
 }
 
+void Game::startTransition(TransitionAction action) {
+    if (m_fadePhase != FadePhase::None) return;
+    m_transitionAction = action;
+    m_fadePhase = FadePhase::FadeOut;
+    m_fadeTimer = 0.0f;
+}
+
+void Game::updateTransition(float dt) {
+    if (m_fadePhase == FadePhase::FadeOut) {
+        m_fadeTimer += dt;
+        if (m_fadeTimer >= FADE_OUT_DURATION) {
+            m_fadeTimer = 0.0f;
+            executeTransitionMidpoint();
+            m_fadePhase = FadePhase::FadeIn;
+        }
+    } else if (m_fadePhase == FadePhase::FadeIn) {
+        m_fadeTimer += dt;
+        if (m_fadeTimer >= FADE_IN_DURATION) {
+            m_fadeTimer = 0.0f;
+            m_fadePhase = FadePhase::None;
+            m_transitionAction = TransitionAction::None;
+        }
+    }
+}
+
+void Game::executeTransitionMidpoint() {
+    switch (m_transitionAction) {
+        case TransitionAction::EnterHouse:
+            transitionTo(Location::FarmhouseInterior);
+            break;
+        case TransitionAction::ExitHouse:
+            transitionTo(Location::Farm);
+            break;
+        case TransitionAction::Sleep:
+            m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+            break;
+        case TransitionAction::None:
+            break;
+    }
+}
+
+void Game::fastForwardTransition() {
+    if (m_fadePhase == FadePhase::FadeOut) {
+        executeTransitionMidpoint();
+        m_fadePhase = FadePhase::None;
+        m_transitionAction = TransitionAction::None;
+        m_fadeTimer = 0.0f;
+    } else if (m_fadePhase == FadePhase::FadeIn) {
+        m_fadePhase = FadePhase::None;
+        m_transitionAction = TransitionAction::None;
+        m_fadeTimer = 0.0f;
+    }
+}
+
 void Game::handleInput() {
+    // Input is locked during screen transition fades
+    if (isInputLocked()) {
+        return;
+    }
+
     // Inventory toggle key (Tab or I)
     if (m_input.isKeyPressed(SDL_SCANCODE_TAB) || m_input.isKeyPressed(SDL_SCANCODE_I)) {
         m_inventoryUI.toggle();
@@ -215,9 +274,9 @@ void Game::handleInput() {
         return;
     }
 
-    // Documented quick-sleep key [Z] (Zzz... rest overnight)
+    // Documented quick-sleep key [Z] (Zzz... rest overnight through fade transition)
     if (m_input.isKeyPressed(SDL_SCANCODE_Z)) {
-        m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+        startTransition(TransitionAction::Sleep);
         return;
     }
 
@@ -265,7 +324,7 @@ void Game::handleInput() {
             if (m_interiorMap.inBounds(tx, ty)) {
                 TileType type = m_interiorMap.getTile(tx, ty).getType();
                 if (type == TileType::Bed) {
-                    m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+                    startTransition(TransitionAction::Sleep);
                     std::cout << "[Interior] Slept at comfortable indoor bed." << std::endl;
                     return;
                 }
@@ -296,7 +355,7 @@ void Game::handleInput() {
                     return;
                 }
                 if (type == TileType::InteriorExit) {
-                    transitionTo(Location::Farm);
+                    startTransition(TransitionAction::ExitHouse);
                     return;
                 }
             }
@@ -332,14 +391,14 @@ void Game::handleInput() {
         // 4. Farmhouse door / entrance check
         if (m_map.inBounds(tx, ty) &&
             (m_map.getTile(tx, ty).getType() == TileType::FarmhouseDoor || (tx == 2 && ty == 2))) {
-            transitionTo(Location::FarmhouseInterior);
+            startTransition(TransitionAction::EnterHouse);
             return;
         }
 
         // Farmhouse rest structure check
         if (m_map.inBounds(tx, ty) &&
             (m_map.getTile(tx, ty).getType() == TileType::Farmhouse || TimeSystem::isBedTile(tx, ty))) {
-            m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+            startTransition(TransitionAction::Sleep);
             return;
         }
 
@@ -352,27 +411,30 @@ void Game::update(float dt) {
     // Update on-screen feedback timer
     m_hud.update(dt);
 
+    // Screen transition fade update (~300 ms out + 300 ms in, through black)
+    updateTransition(dt);
+
     // Living world animation updates
     m_map.update(dt);
     m_interiorMap.update(dt);
     m_sellerNPC.update(dt);
     m_buyerNPC.update(dt);
 
-    // Player movements and world physics only progress if modals are closed
+    // Player movements and world physics only progress if input is unlocked and modals are closed
     Map& activeMap = (m_location == Location::Farm) ? m_map : m_interiorMap;
-    if (!m_inventoryUI.isOpen() && !m_cookingUI.isOpen() && !m_shopUI.isOpen()) {
+    if (!isInputLocked() && !m_inventoryUI.isOpen() && !m_cookingUI.isOpen() && !m_shopUI.isOpen()) {
         m_player.update(dt, m_input, activeMap);
     }
     m_farmSystem.update(dt, m_map);
 
     // Zone transition check: door transitions trigger by overlapping the door tile
     if (m_location == Location::Farm) {
-        if (m_player.overlapsTile(2, 2)) {
-            transitionTo(Location::FarmhouseInterior);
+        if (m_player.overlapsTile(2, 2) && m_fadePhase == FadePhase::None) {
+            startTransition(TransitionAction::EnterHouse);
         }
     } else {
-        if (m_player.overlapsTile(9, 10)) {
-            transitionTo(Location::Farm);
+        if (m_player.overlapsTile(9, 10) && m_fadePhase == FadePhase::None) {
+            startTransition(TransitionAction::ExitHouse);
         }
     }
 
@@ -727,6 +789,60 @@ void Game::update(float dt) {
             std::cout << "[Smoke Test] Living-world animation verified: walk frame advances ("
                       << movingFrame1 << " -> " << movingFrame2 << " -> standing 0), water flips across 600ms boundary (variant 0 -> 1, static shores), NPC idle bob="
                       << bob1 << "!" << std::endl;
+        } else if (m_smokeTestFrames == 150) {
+            // PART B Screen transitions verification:
+            // 1. Verify fade phases progress in order and complete, locking input
+            assert(m_fadePhase == FadePhase::None);
+            assert(!isInputLocked());
+
+            startTransition(TransitionAction::EnterHouse);
+            assert(m_fadePhase == FadePhase::FadeOut);
+            assert(isInputLocked());
+            assert(m_location == Location::Farm && "Location must not change during FadeOut before midpoint");
+
+            // Step through halfway of FadeOut (0.15s)
+            updateTransition(0.15f);
+            assert(m_fadePhase == FadePhase::FadeOut);
+            assert(m_location == Location::Farm);
+
+            // Step through midpoint boundary (0.16s, total > 0.30s)
+            updateTransition(0.16f);
+            assert(m_fadePhase == FadePhase::FadeIn && "FadeOut must transition to FadeIn at black midpoint");
+            assert(m_location == Location::FarmhouseInterior && "State change must execute at midpoint");
+            assert(m_player.getX() == 9 * Map::TILE_SIZE && m_player.getY() == 9 * Map::TILE_SIZE);
+            assert(isInputLocked());
+
+            // Complete FadeIn (0.31s)
+            updateTransition(0.31f);
+            assert(m_fadePhase == FadePhase::None && "Transition must complete to None");
+            assert(!isInputLocked() && "Input must unlock after fade completes");
+
+            // 2. Sleeping through a fade advances day exactly once with day-cycle assertions intact
+            int dayBefore = m_timeSystem.getDay();
+            m_player.setEnergy(25);
+            // Prepare plot (6, 5) as watered soil
+            m_map.setTileType(6, 5, TileType::WateredSoil);
+
+            startTransition(TransitionAction::Sleep);
+            assert(m_fadePhase == FadePhase::FadeOut);
+            assert(m_timeSystem.getDay() == dayBefore && "Day must not advance before midpoint");
+
+            // Advance through midpoint
+            updateTransition(0.31f);
+            assert(m_fadePhase == FadePhase::FadeIn);
+            assert(m_timeSystem.getDay() == dayBefore + 1 && "Day must advance exactly once at midpoint");
+            assert(m_player.getEnergy() == m_player.getMaxEnergy() && "Energy must restore fully to 100");
+            assert(m_map.getTile(6, 5).getType() == TileType::TilledSoil && "Watered soil must dry to tilled soil");
+
+            // Complete FadeIn
+            updateTransition(0.31f);
+            assert(m_fadePhase == FadePhase::None);
+            assert(m_timeSystem.getDay() == dayBefore + 1 && "Day must remain dayBefore + 1 after fade completes");
+
+            // Reset player location back to Farm for cleanliness
+            transitionTo(Location::Farm);
+
+            std::cout << "[Smoke Test] Screen transitions verified: fade phases progress in order (None -> FadeOut -> Midpoint -> FadeIn -> None), input locks, and sleeping through fade advances day exactly once!" << std::endl;
         }
     }
 }
@@ -854,6 +970,17 @@ void Game::render() {
     // 8. Render Shop UI modal when open
     if (m_shopUI.isOpen()) {
         m_shopUI.render(m_renderer, m_inventory, m_shopSystem);
+    }
+
+    // 9. Screen transition fade overlay (through black)
+    if (m_fadePhase == FadePhase::FadeOut) {
+        float progress = std::clamp(m_fadeTimer / FADE_OUT_DURATION, 0.0f, 1.0f);
+        Uint8 alpha = static_cast<Uint8>(std::round(progress * 255.0f));
+        m_renderer.drawRect(0, 0, Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, SDL_Color{0, 0, 0, alpha});
+    } else if (m_fadePhase == FadePhase::FadeIn) {
+        float progress = std::clamp(m_fadeTimer / FADE_IN_DURATION, 0.0f, 1.0f);
+        Uint8 alpha = static_cast<Uint8>(std::round((1.0f - progress) * 255.0f));
+        m_renderer.drawRect(0, 0, Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, SDL_Color{0, 0, 0, alpha});
     }
 
     // Present final frame buffer
