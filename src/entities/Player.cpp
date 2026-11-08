@@ -125,17 +125,7 @@ void Player::update(float dt, const Input& input, const Map& map) {
 }
 
 void Player::render(Renderer& renderer) const {
-    // 1. Draw target tile highlight cursor
-    auto [tx, ty] = getTargetTile();
-    if (tx >= 0 && tx < Map::WIDTH && ty >= 0 && ty < Map::HEIGHT) {
-        const int targetPx = tx * Map::TILE_SIZE;
-        const int targetPy = ty * Map::TILE_SIZE;
-        // Semi-transparent highlight box and clear border
-        renderer.drawRect(targetPx + 2, targetPy + 2, Map::TILE_SIZE - 4, Map::TILE_SIZE - 4, SDL_Color{255, 255, 120, 60});
-        renderer.drawOutline(targetPx + 1, targetPy + 1, Map::TILE_SIZE - 2, Map::TILE_SIZE - 2, SDL_Color{255, 230, 90, 220});
-    }
-
-    // 2. Draw animated player placeholder
+    // 1. Draw animated player placeholder
     const int px = static_cast<int>(m_x);
     const int py = static_cast<int>(m_y);
 

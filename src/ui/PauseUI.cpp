@@ -57,6 +57,46 @@ PauseAction PauseUI::handleInput(const Input& input, AudioSystem* audio) {
         }
     }
 
+    // Mouse click handling
+    if (input.isMouseButtonPressed(SDL_BUTTON_LEFT)) {
+        int mx = input.getMouseX();
+        int my = input.getMouseY();
+        constexpr int WIN_W = 260;
+        constexpr int WIN_H = 260;
+        constexpr int WIN_X = (Config::SCREEN_WIDTH - WIN_W) / 2;
+        constexpr int WIN_Y = (Config::SCREEN_HEIGHT - WIN_H) / 2;
+        constexpr int BTN_W = 190;
+        constexpr int BTN_H = 28;
+        constexpr int BTN_X = WIN_X + (WIN_W - BTN_W) / 2;
+        int btnY = WIN_Y + 48;
+        constexpr int BTN_SPACING = 34;
+
+        for (int i = 0; i < OPTION_COUNT; ++i) {
+            int currentY = btnY + i * BTN_SPACING;
+            if (mx >= BTN_X && mx <= BTN_X + BTN_W && my >= currentY && my <= currentY + BTN_H) {
+                m_selectedIndex = i;
+                if (audio) audio->playSFX(SFX::UIConfirm);
+                switch (i) {
+                    case 0:
+                        close();
+                        return PauseAction::Resume;
+                    case 1:
+                        return PauseAction::SaveNow;
+                    case 2:
+                        return PauseAction::ViewStats;
+                    case 3:
+                        close();
+                        return PauseAction::QuitToTitle;
+                    case 4:
+                        close();
+                        return PauseAction::QuitGame;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+
     return PauseAction::None;
 }
 

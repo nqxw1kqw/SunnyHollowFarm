@@ -401,6 +401,135 @@ bool Game::tryStartFishing() {
     return false;
 }
 
+bool Game::refillWateringCan() {
+    m_audio.playSFX(SFX::Water);
+    m_hud.showFeedback("FILLED WATERING CAN!", 2.0f);
+    std::cout << "[Pond] Refilled watering can with fresh water from pond." << std::endl;
+    return true;
+}
+
+bool Game::interactAt(int tx, int ty) {
+    if (m_fishingSystem.isFishing()) {
+        m_fishingSystem.handleActionInput(m_inventory, &m_hud, &m_audio);
+        return true;
+    }
+
+    if (m_location == Location::FarmhouseInterior) {
+        if (!m_interiorMap.inBounds(tx, ty)) return false;
+        TileType type = m_interiorMap.getTile(tx, ty).getType();
+        if (type == TileType::Bed) {
+            startTransition(TransitionAction::Sleep);
+            std::cout << "[Interior] Slept at comfortable indoor bed." << std::endl;
+            return true;
+        }
+        if (type == TileType::Stove) {
+            m_cookingUI.open();
+            m_audio.playSFX(SFX::UIOpen);
+            std::cout << "[Interior] Opened indoor kitchen stove at (" << tx << ", " << ty << ")." << std::endl;
+            return true;
+        }
+        if (type == TileType::Chest) {
+            int tom = m_inventory.getItemCount(ItemType::Tomato);
+            int wht = m_inventory.getItemCount(ItemType::Wheat);
+            int car = m_inventory.getItemCount(ItemType::Carrot);
+            int sal = m_inventory.getItemCount(ItemType::Salad);
+            int brd = m_inventory.getItemCount(ItemType::Bread);
+            std::string msg = "CHEST: " + std::to_string(tom) + " TOM, "
+                              + std::to_string(wht) + " WHT, "
+                              + std::to_string(car) + " CAR, "
+                              + std::to_string(sal) + " SALAD, "
+                              + std::to_string(brd) + " BREAD";
+            m_hud.showFeedback(msg, 3.0f);
+            std::cout << "[Interior] " << msg << std::endl;
+            return true;
+        }
+        if (type == TileType::Bookshelf) {
+            std::string msg = "ALMANAC: WATER CROPS DAILY FOR 2.5X GROWTH!";
+            m_hud.showFeedback(msg, 3.0f);
+            std::cout << "[Interior] Bookshelf: " << msg << std::endl;
+            return true;
+        }
+        if (type == TileType::InteriorExit) {
+            startTransition(TransitionAction::ExitHouse);
+            return true;
+        }
+        return false;
+    }
+
+    // Location is Farm:
+    if (!m_map.inBounds(tx, ty)) return false;
+
+    // 1. Stove kitchen interaction point check
+    if (m_map.getTile(tx, ty).getType() == TileType::Stove) {
+        m_cookingUI.open();
+        m_audio.playSFX(SFX::UIOpen);
+        std::cout << "[Stove] Opened cooking interface at (" << tx << ", " << ty << ")." << std::endl;
+        return true;
+    }
+
+    // 2. Seller NPC interaction check
+    if ((tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY()) ||
+        (tx >= 13 && tx <= 15 && ty == 1)) {
+        m_shopUI.open(ShopMode::Buy);
+        m_audio.playSFX(SFX::UIOpen);
+        std::cout << "[Shop] Opened Seller NPC shop at (" << tx << ", " << ty << ")." << std::endl;
+        return true;
+    }
+
+    // 3. Buyer NPC interaction check
+    if ((tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY()) ||
+        (tx >= 16 && tx <= 18 && ty == 1)) {
+        m_shopUI.open(ShopMode::Sell);
+        m_audio.playSFX(SFX::UIOpen);
+        std::cout << "[Shop] Opened Buyer NPC shop at (" << tx << ", " << ty << ")." << std::endl;
+        return true;
+    }
+
+    // 4. Farmhouse door / entrance check
+    if (m_map.getTile(tx, ty).getType() == TileType::FarmhouseDoor || (tx == 2 && ty == 2)) {
+        startTransition(TransitionAction::EnterHouse);
+        return true;
+    }
+
+    // Farmhouse rest structure check
+    if (m_map.getTile(tx, ty).getType() == TileType::Farmhouse || TimeSystem::isBedTile(tx, ty)) {
+        startTransition(TransitionAction::Sleep);
+        return true;
+    }
+
+    // 5. Fishing / Pond interaction check
+    if (m_map.getTile(tx, ty).getType() == TileType::Water) {
+        if (m_inventory.activeTool == ToolType::WateringCan) {
+            refillWateringCan();
+            return true;
+        }
+        return tryStartFishing();
+    }
+
+    // 5b. Egg collection interaction check
+    int currTx = static_cast<int>(std::round(m_player.getX() / static_cast<float>(Map::TILE_SIZE)));
+    int currTy = static_cast<int>(std::round(m_player.getY() / static_cast<float>(Map::TILE_SIZE)));
+    if (m_chickenSystem.hasEggAt(tx, ty)) {
+        m_chickenSystem.collectEgg(tx, ty, m_inventory, &m_hud, &m_audio);
+        return true;
+    } else if (m_chickenSystem.hasEggAt(currTx, currTy)) {
+        m_chickenSystem.collectEgg(currTx, currTy, m_inventory, &m_hud, &m_audio);
+        return true;
+    }
+
+    // 6. Farming interaction
+    // If player uses watering can on untilled soil, inform user
+    TileType curType = m_map.getTile(tx, ty).getType();
+    if (m_inventory.activeTool == ToolType::WateringCan &&
+        curType != TileType::TilledSoil && curType != TileType::WateredSoil &&
+        !m_farmSystem.findCrop(tx, ty)) {
+        m_hud.showFeedback("SOIL MUST BE TILLED FIRST!");
+        return false;
+    }
+
+    return m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud, &m_audio);
+}
+
 void Game::handleInput() {
     if (m_gameState == GameState::Title) {
         TitleAction action = m_titleUI.handleInput(m_input, &m_audio);
@@ -577,119 +706,75 @@ void Game::handleInput() {
         m_input.isKeyPressed(SDL_SCANCODE_E) ||
         m_input.isKeyPressed(SDL_SCANCODE_RETURN) ||
         m_input.isKeyPressed(SDL_SCANCODE_C)) {
+        auto [tx, ty] = m_player.getTargetTile();
+        interactAt(tx, ty);
+        return;
+    }
 
-        // If fishing is active, handle reel-in or early press
-        if (m_fishingSystem.isFishing()) {
-            m_fishingSystem.handleActionInput(m_inventory, &m_hud, &m_audio);
+    // Mouse click interactions
+    if (m_input.isMouseButtonPressed(SDL_BUTTON_LEFT)) {
+        int mx = m_input.getMouseX();
+        int my = m_input.getMouseY();
+
+        // 1. Hotbar item slot selection via mouse
+        int hotbarSlot = m_hud.getHotbarSlotAt(mx, my);
+        if (hotbarSlot >= 0) {
+            const ToolType hotbarTools[HUD::HOTBAR_SLOT_COUNT] = {
+                ToolType::Hoe,
+                ToolType::WateringCan,
+                ToolType::TomatoSeeds,
+                ToolType::WheatSeeds,
+                ToolType::CarrotSeeds,
+                ToolType::Tomato,
+                ToolType::Salad,
+                ToolType::Bread
+            };
+            m_inventory.activeTool = hotbarTools[hotbarSlot];
+            m_audio.playSFX(SFX::UIConfirm);
             return;
         }
 
-        if (m_location == Location::FarmhouseInterior) {
-            auto [tx, ty] = m_player.getTargetTile();
-            if (m_interiorMap.inBounds(tx, ty)) {
-                TileType type = m_interiorMap.getTile(tx, ty).getType();
-                if (type == TileType::Bed) {
-                    startTransition(TransitionAction::Sleep);
-                    std::cout << "[Interior] Slept at comfortable indoor bed." << std::endl;
-                    return;
+        // 2. Inventory BAG icon toggle via mouse
+        constexpr int PROD_W = 146;
+        constexpr int PROD_H = 38;
+        constexpr int PROD_X = Config::SCREEN_WIDTH - PROD_W - 14;
+        constexpr int PROD_Y = 8;
+        if (mx >= PROD_X && mx <= PROD_X + PROD_W && my >= PROD_Y && my <= PROD_Y + PROD_H) {
+            if (m_fishingSystem.isFishing()) {
+                m_fishingSystem.cancel();
+            }
+            m_inventoryUI.toggle();
+            m_audio.playSFX(m_inventoryUI.isOpen() ? SFX::UIOpen : SFX::UIConfirm);
+            return;
+        }
+
+        // 3. Gameplay world tile interaction via mouse (NPCs, ground tiles, door, lake, etc.)
+        int worldMx = mx - WORLD_OFFSET_X;
+        int worldMy = my - WORLD_OFFSET_Y;
+        int clickTx = worldMx / Map::TILE_SIZE;
+        int clickTy = worldMy / Map::TILE_SIZE;
+
+        Map& activeMap = (m_location == Location::Farm) ? m_map : m_interiorMap;
+        if (worldMx >= 0 && worldMy >= 0 && activeMap.inBounds(clickTx, clickTy)) {
+            int playerTx = static_cast<int>(std::round(m_player.getX() / static_cast<float>(Map::TILE_SIZE)));
+            int playerTy = static_cast<int>(std::round(m_player.getY() / static_cast<float>(Map::TILE_SIZE)));
+            int dist = std::max(std::abs(clickTx - playerTx), std::abs(clickTy - playerTy));
+
+            if (dist <= 2) {
+                // Turn player towards clicked tile
+                if (std::abs(clickTx - playerTx) >= std::abs(clickTy - playerTy)) {
+                    if (clickTx > playerTx) m_player.setFacing(Direction::Right);
+                    else if (clickTx < playerTx) m_player.setFacing(Direction::Left);
+                } else {
+                    if (clickTy > playerTy) m_player.setFacing(Direction::Down);
+                    else if (clickTy < playerTy) m_player.setFacing(Direction::Up);
                 }
-                if (type == TileType::Stove) {
-                    m_cookingUI.open();
-                    m_audio.playSFX(SFX::UIOpen);
-                    std::cout << "[Interior] Opened indoor kitchen stove at (" << tx << ", " << ty << ")." << std::endl;
-                    return;
-                }
-                if (type == TileType::Chest) {
-                    int tom = m_inventory.getItemCount(ItemType::Tomato);
-                    int wht = m_inventory.getItemCount(ItemType::Wheat);
-                    int car = m_inventory.getItemCount(ItemType::Carrot);
-                    int sal = m_inventory.getItemCount(ItemType::Salad);
-                    int brd = m_inventory.getItemCount(ItemType::Bread);
-                    std::string msg = "CHEST: " + std::to_string(tom) + " TOM, "
-                                      + std::to_string(wht) + " WHT, "
-                                      + std::to_string(car) + " CAR, "
-                                      + std::to_string(sal) + " SALAD, "
-                                      + std::to_string(brd) + " BREAD";
-                    m_hud.showFeedback(msg, 3.0f);
-                    std::cout << "[Interior] " << msg << std::endl;
-                    return;
-                }
-                if (type == TileType::Bookshelf) {
-                    std::string msg = "ALMANAC: WATER CROPS DAILY FOR 2.5X GROWTH!";
-                    m_hud.showFeedback(msg, 3.0f);
-                    std::cout << "[Interior] Bookshelf: " << msg << std::endl;
-                    return;
-                }
-                if (type == TileType::InteriorExit) {
-                    startTransition(TransitionAction::ExitHouse);
-                    return;
-                }
+                interactAt(clickTx, clickTy);
+            } else {
+                m_hud.showFeedback("TOO FAR AWAY!", 1.0f);
             }
             return;
         }
-
-        // Location is Farm:
-        auto [tx, ty] = m_player.getTargetTile();
-
-        // 1. Stove kitchen interaction point check
-        if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Stove) {
-            m_cookingUI.open();
-            m_audio.playSFX(SFX::UIOpen);
-            std::cout << "[Stove] Opened cooking interface at (" << tx << ", " << ty << ")." << std::endl;
-            return;
-        }
-
-        // 2. Seller NPC interaction check (NPC tile (14, 2) or seller stall counter x=13..15, y=1)
-        if ((tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY()) ||
-            (tx >= 13 && tx <= 15 && ty == 1)) {
-            m_shopUI.open(ShopMode::Buy);
-            m_audio.playSFX(SFX::UIOpen);
-            std::cout << "[Shop] Opened Seller NPC shop at (" << tx << ", " << ty << ")." << std::endl;
-            return;
-        }
-
-        // 3. Buyer NPC interaction check (NPC tile (17, 2) or buyer stall counter x=16..18, y=1)
-        if ((tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY()) ||
-            (tx >= 16 && tx <= 18 && ty == 1)) {
-            m_shopUI.open(ShopMode::Sell);
-            m_audio.playSFX(SFX::UIOpen);
-            std::cout << "[Shop] Opened Buyer NPC shop at (" << tx << ", " << ty << ")." << std::endl;
-            return;
-        }
-
-        // 4. Farmhouse door / entrance check
-        if (m_map.inBounds(tx, ty) &&
-            (m_map.getTile(tx, ty).getType() == TileType::FarmhouseDoor || (tx == 2 && ty == 2))) {
-            startTransition(TransitionAction::EnterHouse);
-            return;
-        }
-
-        // Farmhouse rest structure check
-        if (m_map.inBounds(tx, ty) &&
-            (m_map.getTile(tx, ty).getType() == TileType::Farmhouse || TimeSystem::isBedTile(tx, ty))) {
-            startTransition(TransitionAction::Sleep);
-            return;
-        }
-
-        // 5. Fishing interaction check (facing pond water tile from the bank)
-        if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Water) {
-            tryStartFishing();
-            return;
-        }
-
-        // 5b. Egg collection interaction check (interacting on egg tile in pen)
-        int currTx = static_cast<int>(std::round(m_player.getX() / static_cast<float>(Map::TILE_SIZE)));
-        int currTy = static_cast<int>(std::round(m_player.getY() / static_cast<float>(Map::TILE_SIZE)));
-        if (m_chickenSystem.hasEggAt(tx, ty)) {
-            m_chickenSystem.collectEgg(tx, ty, m_inventory, &m_hud, &m_audio);
-            return;
-        } else if (m_chickenSystem.hasEggAt(currTx, currTy)) {
-            m_chickenSystem.collectEgg(currTx, currTy, m_inventory, &m_hud, &m_audio);
-            return;
-        }
-
-        // 6. Farming interaction
-        m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud, &m_audio);
     }
 }
 
@@ -1935,8 +2020,19 @@ void Game::render() {
     m_renderer.clear(SDL_Color{20, 20, 20, 255});
 
     if (m_gameState == GameState::Title) {
-        // Render terrain tile map backdrop
+        // Fill full screen background with grass tiles
+        for (int gy = 0; gy < Config::SCREEN_HEIGHT; gy += Map::TILE_SIZE) {
+            for (int gx = 0; gx < Config::SCREEN_WIDTH; gx += Map::TILE_SIZE) {
+                if (!m_renderer.drawSprite("tile_grass_0.png", gx, gy, Map::TILE_SIZE, Map::TILE_SIZE)) {
+                    m_renderer.drawRect(gx, gy, Map::TILE_SIZE, Map::TILE_SIZE, SDL_Color{85, 140, 50, 255});
+                }
+            }
+        }
+        // Render terrain tile map backdrop centered
+        m_renderer.setOffset(WORLD_OFFSET_X, WORLD_OFFSET_Y);
         m_map.render(m_renderer);
+        m_renderer.setOffset(0, 0);
+
         // Dimmed backdrop overlay
         m_renderer.drawRect(0, 0, Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, SDL_Color{0, 0, 0, 160});
         // Title UI panel and menu
@@ -1946,6 +2042,17 @@ void Game::render() {
     }
 
     if (m_location == Location::Farm) {
+        // Fill full screen with lush grass tiles
+        for (int gy = 0; gy < Config::SCREEN_HEIGHT; gy += Map::TILE_SIZE) {
+            for (int gx = 0; gx < Config::SCREEN_WIDTH; gx += Map::TILE_SIZE) {
+                if (!m_renderer.drawSprite("tile_grass_0.png", gx, gy, Map::TILE_SIZE, Map::TILE_SIZE)) {
+                    m_renderer.drawRect(gx, gy, Map::TILE_SIZE, Map::TILE_SIZE, SDL_Color{85, 140, 50, 255});
+                }
+            }
+        }
+
+        m_renderer.setOffset(WORLD_OFFSET_X, WORLD_OFFSET_Y);
+
         // 1. Render terrain tile map
         m_map.render(m_renderer);
 
@@ -1958,6 +2065,9 @@ void Game::render() {
         m_buyerNPC.render(m_renderer);
         m_chickenSystem.render(m_renderer);
     } else {
+        // Interior dark backdrop
+        m_renderer.drawRect(0, 0, Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, SDL_Color{15, 12, 10, 255});
+        m_renderer.setOffset(WORLD_OFFSET_X, WORLD_OFFSET_Y);
         // Render Farmhouse interior room
         m_interiorMap.render(m_renderer);
     }
@@ -1965,113 +2075,192 @@ void Game::render() {
     // 4. Render farmer player
     m_player.render(m_renderer);
 
-    // Rain particle overlay outdoors on rainy days (indoor/interior unaffected)
-    if (m_location == Location::Farm && m_timeSystem.getWeather() == Weather::Rainy) {
-        renderRainParticles();
-    }
-
-    // World interaction prompts (NPC dialogue, sleep, cooking)
+    // World interaction prompts (dynamic contextual prompt based on held tool and target tile)
     if (!m_inventoryUI.isOpen() && !m_cookingUI.isOpen() && !m_shopUI.isOpen()) {
-        auto [tx, ty] = m_player.getTargetTile();
-        int promptX = 0, promptY = 0, promptW = 76, promptH = 24;
-        const char* promptText = nullptr;
-        const char* iconSprite = nullptr;
-        bool showPrompt = false;
+        int playerTx = static_cast<int>(std::round(m_player.getX() / static_cast<float>(Map::TILE_SIZE)));
+        int playerTy = static_cast<int>(std::round(m_player.getY() / static_cast<float>(Map::TILE_SIZE)));
 
-        if (m_location == Location::Farm) {
-            int currTx = static_cast<int>(std::round(m_player.getX() / static_cast<float>(Map::TILE_SIZE)));
-            int currTy = static_cast<int>(std::round(m_player.getY() / static_cast<float>(Map::TILE_SIZE)));
+        // Check if mouse hovers a tile within reach (dist <= 2)
+        int worldMx = m_input.getMouseX() - WORLD_OFFSET_X;
+        int worldMy = m_input.getMouseY() - WORLD_OFFSET_Y;
+        int hoverTx = worldMx / Map::TILE_SIZE;
+        int hoverTy = worldMy / Map::TILE_SIZE;
 
-            if ((tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY()) ||
-                (tx >= 13 && tx <= 15 && ty == 1)) {
-                promptX = 14 * Map::TILE_SIZE - 22;
-                promptY = 2 * Map::TILE_SIZE - 28;
-                promptW = 76;
-                promptH = 24;
-                promptText = "[E] SHOP";
-                showPrompt = true;
-            } else if ((tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY()) ||
-                       (tx >= 16 && tx <= 18 && ty == 1)) {
-                promptX = 17 * Map::TILE_SIZE - 22;
-                promptY = 2 * Map::TILE_SIZE - 28;
-                promptW = 76;
-                promptH = 24;
-                promptText = "[E] SHOP";
-                showPrompt = true;
-            } else if (m_chickenSystem.hasEggAt(tx, ty) || m_chickenSystem.hasEggAt(currTx, currTy)) {
-                int eggTileX = m_chickenSystem.hasEggAt(tx, ty) ? tx : currTx;
-                int eggTileY = m_chickenSystem.hasEggAt(tx, ty) ? ty : currTy;
-                promptX = eggTileX * Map::TILE_SIZE - 20;
-                promptY = eggTileY * Map::TILE_SIZE - 28;
-                promptW = 76;
-                promptH = 24;
-                promptText = "[E] EGG";
-                showPrompt = true;
-            } else if (m_map.inBounds(tx, ty) &&
-                       (m_map.getTile(tx, ty).getType() == TileType::Farmhouse || TimeSystem::isBedTile(tx, ty))) {
-                promptX = tx * Map::TILE_SIZE - 24;
-                promptY = ty * Map::TILE_SIZE - 28;
-                promptW = 80;
-                promptH = 24;
-                promptText = "SLEEP";
-                iconSprite = "ui_sleep_icon.png";
-                showPrompt = true;
-            } else if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Stove) {
-                promptX = 4 * Map::TILE_SIZE - 22;
-                promptY = 2 * Map::TILE_SIZE - 28;
-                promptW = 76;
-                promptH = 24;
-                promptText = "COOK";
-                iconSprite = "ui_cooking_icon.png";
-                showPrompt = true;
-            } else if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Water && !m_fishingSystem.isFishing()) {
-                promptX = tx * Map::TILE_SIZE - 18;
-                promptY = ty * Map::TILE_SIZE - 28;
-                promptW = 68;
-                promptH = 24;
-                promptText = "[E] FISH";
-                showPrompt = true;
+        Map& activeMap = (m_location == Location::Farm) ? m_map : m_interiorMap;
+        int targetTx = -1, targetTy = -1;
+
+        if (worldMx >= 0 && worldMy >= 0 && activeMap.inBounds(hoverTx, hoverTy)) {
+            int hoverDist = std::max(std::abs(hoverTx - playerTx), std::abs(hoverTy - playerTy));
+            if (hoverDist <= 2) {
+                targetTx = hoverTx;
+                targetTy = hoverTy;
             }
-        } else {
-            if (m_interiorMap.inBounds(tx, ty)) {
-                TileType type = m_interiorMap.getTile(tx, ty).getType();
+        }
+
+        if (targetTx < 0 || targetTy < 0) {
+            auto [ptx, pty] = m_player.getTargetTile();
+            if (activeMap.inBounds(ptx, pty)) {
+                targetTx = ptx;
+                targetTy = pty;
+            }
+        }
+
+        if (targetTx >= 0 && targetTy >= 0) {
+            std::string promptText = "";
+            const char* iconSprite = nullptr;
+            bool showPrompt = false;
+
+            if (m_location == Location::FarmhouseInterior) {
+                TileType type = m_interiorMap.getTile(targetTx, targetTy).getType();
                 if (type == TileType::Bed) {
-                    promptX = 6 * Map::TILE_SIZE - 24;
-                    promptY = 4 * Map::TILE_SIZE - 28;
-                    promptW = 80;
-                    promptH = 24;
-                    promptText = "SLEEP";
+                    promptText = "[E] SLEEP";
                     iconSprite = "ui_sleep_icon.png";
                     showPrompt = true;
                 } else if (type == TileType::Stove) {
-                    promptX = 11 * Map::TILE_SIZE - 22;
-                    promptY = 4 * Map::TILE_SIZE - 28;
-                    promptW = 76;
-                    promptH = 24;
-                    promptText = "COOK";
+                    promptText = "[E] COOK";
+                    iconSprite = "ui_cooking_icon.png";
+                    showPrompt = true;
+                } else if (type == TileType::InteriorExit) {
+                    promptText = "[E] EXIT";
+                    showPrompt = true;
+                } else if (type == TileType::Chest) {
+                    promptText = "[E] CHEST";
+                    showPrompt = true;
+                } else if (type == TileType::Bookshelf) {
+                    promptText = "[E] READ";
+                    showPrompt = true;
+                }
+            } else {
+                // Location::Farm
+                // 1. Seller NPC
+                if ((targetTx == m_sellerNPC.getTileX() && targetTy == m_sellerNPC.getTileY()) ||
+                    (targetTx >= 13 && targetTx <= 15 && targetTy == 1)) {
+                    promptText = "[E] SHOP";
+                    showPrompt = true;
+                }
+                // 2. Buyer NPC
+                else if ((targetTx == m_buyerNPC.getTileX() && targetTy == m_buyerNPC.getTileY()) ||
+                         (targetTx >= 16 && targetTx <= 18 && targetTy == 1)) {
+                    promptText = "[E] SELL";
+                    showPrompt = true;
+                }
+                // 3. Farmhouse entrance door
+                else if (m_map.getTile(targetTx, targetTy).getType() == TileType::FarmhouseDoor || (targetTx == 2 && targetTy == 2)) {
+                    promptText = "[E] ENTER";
+                    showPrompt = true;
+                }
+                // 4. Farmhouse bed / sleep
+                else if (m_map.getTile(targetTx, targetTy).getType() == TileType::Farmhouse || TimeSystem::isBedTile(targetTx, targetTy)) {
+                    promptText = "[E] SLEEP";
+                    iconSprite = "ui_sleep_icon.png";
+                    showPrompt = true;
+                }
+                // 5. Outdoor Stove
+                else if (m_map.getTile(targetTx, targetTy).getType() == TileType::Stove) {
+                    promptText = "[E] COOK";
                     iconSprite = "ui_cooking_icon.png";
                     showPrompt = true;
                 }
+                // 6. Chicken Egg
+                else if (m_chickenSystem.hasEggAt(targetTx, targetTy) || m_chickenSystem.hasEggAt(playerTx, playerTy)) {
+                    if (m_chickenSystem.hasEggAt(playerTx, playerTy) && !m_chickenSystem.hasEggAt(targetTx, targetTy)) {
+                        targetTx = playerTx;
+                        targetTy = playerTy;
+                    }
+                    promptText = "[E] EGG";
+                    showPrompt = true;
+                }
+                // 7. Water tile (Pond / Lake)
+                else if (m_map.getTile(targetTx, targetTy).getType() == TileType::Water) {
+                    if (m_inventory.activeTool == ToolType::WateringCan) {
+                        promptText = "[E] FILL WATER";
+                        iconSprite = "tool_watering_can.png";
+                        showPrompt = true;
+                    } else if (!m_fishingSystem.isFishing()) {
+                        promptText = "[E] FISH";
+                        showPrompt = true;
+                    }
+                }
+                // 8. Ground / Farming Soil tiles
+                else {
+                    Crop* crop = m_farmSystem.findCrop(targetTx, targetTy);
+                    if (crop) {
+                        if (crop->isMature()) {
+                            promptText = "[E] HARVEST";
+                            showPrompt = true;
+                        } else if (m_inventory.activeTool == ToolType::WateringCan &&
+                                   m_map.getTile(targetTx, targetTy).getType() == TileType::TilledSoil) {
+                            promptText = "[E] WATER";
+                            iconSprite = "tool_watering_can.png";
+                            showPrompt = true;
+                        }
+                    } else {
+                        TileType t = m_map.getTile(targetTx, targetTy).getType();
+                        if (t == TileType::Dirt) {
+                            // "ô đất chưa bới thì nếu player ko cầm gì thì ko hiện ui đào , neeuus cầm cuốc thì sẽ hiện đào"
+                            if (m_inventory.activeTool == ToolType::Hoe) {
+                                promptText = "[E] TILL";
+                                iconSprite = "tool_hoe.png";
+                                showPrompt = true;
+                            }
+                        } else if (t == TileType::TilledSoil) {
+                            // "tiếp theo như watering can nếu đất đã xởi thì tưới dc , chưa xới thì ko"
+                            if (m_inventory.activeTool == ToolType::WateringCan) {
+                                promptText = "[E] WATER";
+                                iconSprite = "tool_watering_can.png";
+                                showPrompt = true;
+                            } else if (m_inventory.activeTool == ToolType::TomatoSeeds ||
+                                       m_inventory.activeTool == ToolType::WheatSeeds ||
+                                       m_inventory.activeTool == ToolType::CarrotSeeds) {
+                                promptText = "[E] PLANT";
+                                iconSprite = "item_seed_packet.png";
+                                showPrompt = true;
+                            }
+                        } else if (t == TileType::WateredSoil) {
+                            if (m_inventory.activeTool == ToolType::TomatoSeeds ||
+                                m_inventory.activeTool == ToolType::WheatSeeds ||
+                                m_inventory.activeTool == ToolType::CarrotSeeds) {
+                                promptText = "[E] PLANT";
+                                iconSprite = "item_seed_packet.png";
+                                showPrompt = true;
+                            }
+                        }
+                    }
+                }
             }
-        }
 
-        if (showPrompt) {
-            bool hasDialogue = m_renderer.drawDialogue(promptX, promptY, promptW, promptH, true);
-            if (!hasDialogue) {
-                m_renderer.drawRect(promptX, promptY, promptW, promptH, SDL_Color{35, 27, 22, 240});
-                m_renderer.drawOutline(promptX, promptY, promptW, promptH, SDL_Color{195, 160, 105, 255});
-            }
-            int textX = promptX + 8;
-            if (iconSprite) {
-                m_renderer.drawSprite(iconSprite, promptX + 6, promptY + 3, 18, 18);
-                textX = promptX + 28;
-            } else {
+            if (showPrompt) {
                 int tw = BitmapFont::getTextWidth(promptText, 1);
-                textX = promptX + (promptW - tw) / 2;
+                int promptW = tw + (iconSprite ? 30 : 16);
+                int promptH = 22;
+                int promptX = targetTx * Map::TILE_SIZE + (Map::TILE_SIZE - promptW) / 2;
+                int promptY = targetTy * Map::TILE_SIZE - 24;
+                if (promptY < 4) promptY = targetTy * Map::TILE_SIZE + Map::TILE_SIZE + 4;
+
+                bool hasDialogue = m_renderer.drawDialogue(promptX, promptY, promptW, promptH, true);
+                if (!hasDialogue) {
+                    m_renderer.drawRect(promptX, promptY, promptW, promptH, SDL_Color{35, 27, 22, 240});
+                    m_renderer.drawOutline(promptX, promptY, promptW, promptH, SDL_Color{195, 160, 105, 255});
+                }
+                int textX = promptX + 8;
+                if (iconSprite) {
+                    m_renderer.drawSprite(iconSprite, promptX + 4, promptY + 3, 16, 16);
+                    textX = promptX + 22;
+                } else {
+                    textX = promptX + (promptW - tw) / 2;
+                }
+                SDL_Color textCol = hasDialogue ? SDL_Color{60, 36, 22, 255} : SDL_Color{255, 230, 130, 255};
+                BitmapFont::drawText(m_renderer, promptText, textX, promptY + 7, textCol, 1);
             }
-            SDL_Color textCol = hasDialogue ? SDL_Color{60, 36, 22, 255} : SDL_Color{255, 230, 130, 255};
-            BitmapFont::drawText(m_renderer, promptText, textX, promptY + 8, textCol, 1);
         }
+    }
+
+    // Reset renderer offset for screen-space HUD and UI overlays
+    m_renderer.setOffset(0, 0);
+
+    // Rain particle overlay outdoors on rainy days (indoor/interior unaffected)
+    if (m_location == Location::Farm && m_timeSystem.getWeather() == Weather::Rainy) {
+        renderRainParticles();
     }
 
     // 5. Render HUD with Day Counter & Weather Indicator

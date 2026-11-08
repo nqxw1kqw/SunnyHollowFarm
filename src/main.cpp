@@ -21,8 +21,8 @@ int main(int argc, char* argv[]) {
     }
 
     Game game;
-    // 20x15 tiles of 32x32 pixels = 640x480 resolution
-    if (!game.init("Sunny Hollow Farm", 640, 480, smokeTest, playtest)) {
+    // 1600x900 resolution
+    if (!game.init("Sunny Hollow Farm", Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, smokeTest, playtest)) {
         std::cerr << "Failed to initialize game!" << std::endl;
         return 1;
     }

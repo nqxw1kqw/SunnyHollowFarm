@@ -41,7 +41,14 @@ public:
 
     SDL_Renderer* getSDLRenderer() const { return m_renderer; }
 
+    // World-space coordinate offset
+    void setOffset(int ox, int oy) { m_offsetX = ox; m_offsetY = oy; }
+    int getOffsetX() const { return m_offsetX; }
+    int getOffsetY() const { return m_offsetY; }
+
 private:
     SDL_Renderer* m_renderer = nullptr;
     AssetManager* m_assets = nullptr;
+    int m_offsetX = 0;
+    int m_offsetY = 0;
 };

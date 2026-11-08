@@ -9,12 +9,6 @@ if(DEFINED ENV{HOME} AND EXISTS "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu/pkgc
     set(ENV{PKG_CONFIG_PATH} "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu/pkgconfig:$ENV{PKG_CONFIG_PATH}")
 endif()
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)
-pkg_check_modules(SDL2_IMAGE REQUIRED IMPORTED_TARGET SDL2_image)
-pkg_check_modules(SDL2_TTF REQUIRED IMPORTED_TARGET SDL2_ttf)
-pkg_check_modules(SDL2_MIXER REQUIRED IMPORTED_TARGET SDL2_mixer)
-
 set(SOURCES
     src/main.cpp
     src/core/Time.cpp
@@ -52,16 +46,71 @@ add_executable(sunny_hollow_farm ${SOURCES})
 
 target_include_directories(sunny_hollow_farm PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-target_compile_options(sunny_hollow_farm PRIVATE -Wall -Wextra -Wpedantic)
-
-if(DEFINED ENV{HOME} AND EXISTS "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu")
-    target_link_directories(sunny_hollow_farm PRIVATE "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu")
-    target_link_options(sunny_hollow_farm PRIVATE "-Wl,--disable-new-dtags,-rpath,$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu")
+if(MSVC)
+    target_compile_options(sunny_hollow_farm PRIVATE /W3 /permissive- /utf-8)
+else()
+    target_compile_options(sunny_hollow_farm PRIVATE -Wall -Wextra -Wpedantic)
 endif()
 
-target_link_libraries(sunny_hollow_farm PRIVATE
-    PkgConfig::SDL2
-    PkgConfig::SDL2_IMAGE
-    PkgConfig::SDL2_TTF
-    PkgConfig::SDL2_MIXER
-)
+if(WIN32 AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL2-2.32.10")
+    set(SDL2_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL2-2.32.10")
+    set(SDL2_IMAGE_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL2_image-2.8.5")
+    set(SDL2_TTF_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL2_ttf-2.24.0")
+    set(SDL2_MIXER_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/SDL2_mixer-2.8.0")
+
+    target_include_directories(sunny_hollow_farm PRIVATE
+        ${SDL2_ROOT}/include
+        ${SDL2_IMAGE_ROOT}/include
+        ${SDL2_TTF_ROOT}/include
+        ${SDL2_MIXER_ROOT}/include
+    )
+
+    target_link_directories(sunny_hollow_farm PRIVATE
+        ${SDL2_ROOT}/lib/x64
+        ${SDL2_IMAGE_ROOT}/lib/x64
+        ${SDL2_TTF_ROOT}/lib/x64
+        ${SDL2_MIXER_ROOT}/lib/x64
+    )
+
+    target_link_libraries(sunny_hollow_farm PRIVATE
+        SDL2main
+        SDL2
+        SDL2_image
+        SDL2_ttf
+        SDL2_mixer
+    )
+
+    # Copy DLLs to target binary directory and project root after build
+    add_custom_command(TARGET sunny_hollow_farm POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${SDL2_ROOT}/lib/x64/SDL2.dll
+            ${SDL2_IMAGE_ROOT}/lib/x64/SDL2_image.dll
+            ${SDL2_TTF_ROOT}/lib/x64/SDL2_ttf.dll
+            ${SDL2_MIXER_ROOT}/lib/x64/SDL2_mixer.dll
+            $<TARGET_FILE_DIR:sunny_hollow_farm>
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${SDL2_ROOT}/lib/x64/SDL2.dll
+            ${SDL2_IMAGE_ROOT}/lib/x64/SDL2_image.dll
+            ${SDL2_TTF_ROOT}/lib/x64/SDL2_ttf.dll
+            ${SDL2_MIXER_ROOT}/lib/x64/SDL2_mixer.dll
+            ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SDL2 REQUIRED IMPORTED_TARGET sdl2)
+    pkg_check_modules(SDL2_IMAGE REQUIRED IMPORTED_TARGET SDL2_image)
+    pkg_check_modules(SDL2_TTF REQUIRED IMPORTED_TARGET SDL2_ttf)
+    pkg_check_modules(SDL2_MIXER REQUIRED IMPORTED_TARGET SDL2_mixer)
+
+    if(DEFINED ENV{HOME} AND EXISTS "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu")
+        target_link_directories(sunny_hollow_farm PRIVATE "$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu")
+        target_link_options(sunny_hollow_farm PRIVATE "-Wl,--disable-new-dtags,-rpath,$ENV{HOME}/.local/usr/lib/x86_64-linux-gnu")
+    endif()
+
+    target_link_libraries(sunny_hollow_farm PRIVATE
+        PkgConfig::SDL2
+        PkgConfig::SDL2_IMAGE
+        PkgConfig::SDL2_TTF
+        PkgConfig::SDL2_MIXER
+    )
+endif()

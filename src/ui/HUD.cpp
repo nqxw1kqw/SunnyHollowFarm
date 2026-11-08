@@ -220,10 +220,10 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     }
 
     // 4. Inventory toggle key hint & Harvested produce panel (top-right)
-    constexpr int PROD_X = 482;
-    constexpr int PROD_Y = 8;
     constexpr int PROD_W = 146;
     constexpr int PROD_H = 38;
+    constexpr int PROD_X = Config::SCREEN_WIDTH - PROD_W - 14;
+    constexpr int PROD_Y = 8;
 
     renderer.drawRect(PROD_X, PROD_Y, PROD_W, PROD_H, SDL_Color{25, 20, 18, 220});
     renderer.drawOutline(PROD_X, PROD_Y, PROD_W, PROD_H, SDL_Color{170, 140, 95, 255});

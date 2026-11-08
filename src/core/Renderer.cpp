@@ -51,7 +51,7 @@ void Renderer::present() {
 void Renderer::drawRect(int x, int y, int w, int h, SDL_Color color, bool fill) {
     if (!m_renderer) return;
     SDL_SetRenderDrawColor(m_renderer, color.r, color.g, color.b, color.a);
-    SDL_Rect rect{x, y, w, h};
+    SDL_Rect rect{x + m_offsetX, y + m_offsetY, w, h};
     if (fill) {
         SDL_RenderFillRect(m_renderer, &rect);
     } else {
@@ -66,7 +66,7 @@ void Renderer::drawOutline(int x, int y, int w, int h, SDL_Color color) {
 void Renderer::drawLine(int x1, int y1, int x2, int y2, SDL_Color color) {
     if (!m_renderer) return;
     SDL_SetRenderDrawColor(m_renderer, color.r, color.g, color.b, color.a);
-    SDL_RenderDrawLine(m_renderer, x1, y1, x2, y2);
+    SDL_RenderDrawLine(m_renderer, x1 + m_offsetX, y1 + m_offsetY, x2 + m_offsetX, y2 + m_offsetY);
 }
 
 bool Renderer::drawSprite(const std::string& filename, int x, int y, int w, int h,
@@ -74,7 +74,7 @@ bool Renderer::drawSprite(const std::string& filename, int x, int y, int w, int 
     if (!m_assets || !m_renderer) return false;
     SDL_Texture* texture = m_assets->getTexture("assets/sprites/" + filename, m_renderer);
     if (!texture) return false;
-    const SDL_Rect destination{x, y, w, h};
+    const SDL_Rect destination{x + m_offsetX, y + m_offsetY, w, h};
     return SDL_RenderCopy(m_renderer, texture, source, &destination) == 0;
 }
 
@@ -123,8 +123,8 @@ bool Renderer::drawNineSlice(const std::string& filename, int x, int y, int w, i
 
     int dst_w[3] = {dst_w_left, dst_w_center, dst_w_right};
     int dst_h[3] = {dst_h_top, dst_h_center, dst_h_bottom};
-    int dst_x[3] = {x, x + dst_w_left, x + w - dst_w_right};
-    int dst_y[3] = {y, y + dst_h_top, y + h - dst_h_bottom};
+    int dst_x[3] = {x + m_offsetX, x + m_offsetX + dst_w_left, x + m_offsetX + w - dst_w_right};
+    int dst_y[3] = {y + m_offsetY, y + m_offsetY + dst_h_top, y + m_offsetY + h - dst_h_bottom};
 
     for (int r = 0; r < 3; ++r) {
         for (int c = 0; c < 3; ++c) {

@@ -124,6 +124,12 @@ public:
 
     // Pond fishing interaction
     bool tryStartFishing();
+    bool refillWateringCan();
+    bool interactAt(int tx, int ty);
+
+    // Centered world coordinates in 1600x900 viewport
+    static constexpr int WORLD_OFFSET_X = (Config::SCREEN_WIDTH - Map::WIDTH * Map::TILE_SIZE) / 2;
+    static constexpr int WORLD_OFFSET_Y = (Config::SCREEN_HEIGHT - Map::HEIGHT * Map::TILE_SIZE) / 2;
 
     // Screen transition fade state machine (~300 ms out + 300 ms in)
     static constexpr float FADE_OUT_DURATION = 0.3f;

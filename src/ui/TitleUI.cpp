@@ -64,13 +64,55 @@ TitleAction TitleUI::handleInput(const Input& input, AudioSystem* audio) {
                 if (audio) audio->playSFX(SFX::UIConfirm);
                 return TitleAction::Quit;
             }
-        } else {
             if (m_selectedIndex == 0) {
                 if (audio) audio->playSFX(SFX::UIConfirm);
                 return TitleAction::NewGame;
             } else if (m_selectedIndex == 1) {
                 if (audio) audio->playSFX(SFX::UIConfirm);
                 return TitleAction::Quit;
+            }
+        }
+    }
+
+    // Mouse click handling
+    if (input.isMouseButtonPressed(SDL_BUTTON_LEFT)) {
+        int mx = input.getMouseX();
+        int my = input.getMouseY();
+        constexpr int WIN_W = 340;
+        constexpr int WIN_H = 290;
+        constexpr int WIN_X = (Config::SCREEN_WIDTH - WIN_W) / 2;
+        constexpr int WIN_Y = (Config::SCREEN_HEIGHT - WIN_H) / 2;
+        constexpr int BTN_W = 200;
+        constexpr int BTN_H = 32;
+        constexpr int BTN_X = WIN_X + (WIN_W - BTN_W) / 2;
+        int btnY = WIN_Y + 64;
+        int spacing = (count == 3) ? 44 : 52;
+
+        for (int i = 0; i < count; ++i) {
+            int currentY = btnY + i * spacing;
+            if (mx >= BTN_X && mx <= BTN_X + BTN_W && my >= currentY && my <= currentY + BTN_H) {
+                m_selectedIndex = i;
+                if (m_hasSave) {
+                    if (i == 0) {
+                        if (audio) audio->playSFX(SFX::UIConfirm);
+                        return TitleAction::Continue;
+                    } else if (i == 1) {
+                        m_confirmOverwrite = true;
+                        if (audio) audio->playSFX(SFX::UIOpen);
+                        return TitleAction::None;
+                    } else if (i == 2) {
+                        if (audio) audio->playSFX(SFX::UIConfirm);
+                        return TitleAction::Quit;
+                    }
+                } else {
+                    if (i == 0) {
+                        if (audio) audio->playSFX(SFX::UIConfirm);
+                        return TitleAction::NewGame;
+                    } else if (i == 1) {
+                        if (audio) audio->playSFX(SFX::UIConfirm);
+                        return TitleAction::Quit;
+                    }
+                }
             }
         }
     }

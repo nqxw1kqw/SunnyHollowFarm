@@ -52,6 +52,66 @@ void ShopUI::handleInput(const Input& input, Inventory& inventory, ShopSystem& s
             shopSystem.sellItem(chosenItem, 1, inventory, hud, audio);
         }
     }
+
+    // Mouse click handling for tabs and item rows
+    if (input.isMouseButtonPressed(SDL_BUTTON_LEFT)) {
+        int mx = input.getMouseX();
+        int my = input.getMouseY();
+        constexpr int WIN_W = 440;
+        constexpr int WIN_H = 320;
+        constexpr int WIN_X = (Config::SCREEN_WIDTH - WIN_W) / 2;
+        constexpr int WIN_Y = (Config::SCREEN_HEIGHT - WIN_H) / 2;
+        int tabY = WIN_Y + 34;
+
+        // Buy tab
+        if (mx >= WIN_X + 16 && mx <= WIN_X + 96 && my >= tabY && my <= tabY + 20) {
+            if (m_mode != ShopMode::Buy) {
+                m_mode = ShopMode::Buy;
+                m_selectedIndex = 0;
+                if (audio) audio->playSFX(SFX::UIConfirm);
+            }
+            return;
+        }
+        // Sell tab
+        if (mx >= WIN_X + 104 && mx <= WIN_X + 184 && my >= tabY && my <= tabY + 20) {
+            if (m_mode != ShopMode::Sell) {
+                m_mode = ShopMode::Sell;
+                m_selectedIndex = 0;
+                if (audio) audio->playSFX(SFX::UIConfirm);
+            }
+            return;
+        }
+
+        // Items list
+        int listY = tabY + 30;
+        constexpr int ITEM_H = 40;
+        constexpr int MAX_VISIBLE = 5;
+        int scrollOffset = 0;
+        if (itemCount > MAX_VISIBLE) {
+            scrollOffset = std::max(0, std::min(m_selectedIndex - (MAX_VISIBLE / 2), itemCount - MAX_VISIBLE));
+        }
+        int visibleCount = std::min(MAX_VISIBLE, itemCount);
+        for (int vi = 0; vi < visibleCount; ++vi) {
+            int i = scrollOffset + vi;
+            int itemY = listY + vi * (ITEM_H + 4);
+            int rowX = WIN_X + 14;
+            int rowW = WIN_W - 28;
+            if (mx >= rowX && mx <= rowX + rowW && my >= itemY && my <= itemY + ITEM_H) {
+                if (m_selectedIndex == i) {
+                    ItemType chosenItem = catalog[i];
+                    if (m_mode == ShopMode::Buy) {
+                        shopSystem.buyItem(chosenItem, 1, inventory, hud, audio);
+                    } else {
+                        shopSystem.sellItem(chosenItem, 1, inventory, hud, audio);
+                    }
+                } else {
+                    m_selectedIndex = i;
+                    if (audio) audio->playSFX(SFX::UIConfirm);
+                }
+                return;
+            }
+        }
+    }
 }
 
 void ShopUI::render(Renderer& renderer, const Inventory& inventory, const ShopSystem& shopSystem) const {

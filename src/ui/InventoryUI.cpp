@@ -47,6 +47,33 @@ void InventoryUI::handleInput(const Input& input, Inventory& inventory, AudioSys
     }
 
     m_selectedSlot = row * COLS + col;
+
+    // Mouse click selection
+    if (input.isMouseButtonPressed(SDL_BUTTON_LEFT)) {
+        int mx = input.getMouseX();
+        int my = input.getMouseY();
+        constexpr int WIN_W = 430;
+        constexpr int WIN_H = 310;
+        constexpr int WIN_X = (Config::SCREEN_WIDTH - WIN_W) / 2;
+        constexpr int WIN_Y = (Config::SCREEN_HEIGHT - WIN_H) / 2;
+        constexpr int SLOT_SIZE = 42;
+        constexpr int SLOT_GAP = 8;
+        constexpr int GRID_W = COLS * SLOT_SIZE + (COLS - 1) * SLOT_GAP;
+        constexpr int GRID_X = WIN_X + (WIN_W - GRID_W) / 2;
+        constexpr int GRID_Y = WIN_Y + 42;
+
+        for (int i = 0; i < Config::INVENTORY_SLOT_COUNT; ++i) {
+            int r = i / COLS;
+            int c = i % COLS;
+            int sx = GRID_X + c * (SLOT_SIZE + SLOT_GAP);
+            int sy = GRID_Y + r * (SLOT_SIZE + SLOT_GAP);
+            if (mx >= sx && mx <= sx + SLOT_SIZE && my >= sy && my <= sy + SLOT_SIZE) {
+                m_selectedSlot = i;
+                if (audio) audio->playSFX(SFX::UIConfirm);
+                return;
+            }
+        }
+    }
 }
 
 void InventoryUI::render(Renderer& renderer, const Inventory& inventory) const {

@@ -5,3 +5,6 @@ cmake-build-*/
 .DS_Store
 savegame.json
 smoke_save.json
+third_party/
+*.dll
+sunny_hollow_farm.exe

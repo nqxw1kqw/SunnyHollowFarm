@@ -38,6 +38,34 @@ void CookingUI::handleInput(const Input& input, Inventory& inventory, CookingSys
             std::cout << "[CookingUI] Cooking failed due to missing ingredients." << std::endl;
         }
     }
+
+    // Mouse click selection / cooking
+    if (input.isMouseButtonPressed(SDL_BUTTON_LEFT)) {
+        int mx = input.getMouseX();
+        int my = input.getMouseY();
+        constexpr int WIN_W = 420;
+        constexpr int WIN_H = 300;
+        constexpr int WIN_X = (Config::SCREEN_WIDTH - WIN_W) / 2;
+        constexpr int WIN_Y = (Config::SCREEN_HEIGHT - WIN_H) / 2;
+        int startY = WIN_Y + 42;
+        constexpr int ITEM_HEIGHT = 70;
+
+        for (int i = 0; i < recipeCount; ++i) {
+            int itemY = startY + i * ITEM_HEIGHT;
+            int rowX = WIN_X + 12;
+            int rowW = WIN_W - 24;
+            int rowH = ITEM_HEIGHT - 6;
+            if (mx >= rowX && mx <= rowX + rowW && my >= itemY && my <= itemY + rowH) {
+                if (m_selectedIndex == i) {
+                    cookingSystem.cook(i, inventory, hud, audio);
+                } else {
+                    m_selectedIndex = i;
+                    if (audio) audio->playSFX(SFX::UIConfirm);
+                }
+                return;
+            }
+        }
+    }
 }
 
 void CookingUI::render(Renderer& renderer, const Inventory& inventory, const CookingSystem& cookingSystem) const {

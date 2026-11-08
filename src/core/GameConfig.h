@@ -3,8 +3,8 @@
 // Centralized game configuration and tuning parameters for Sunny Hollow Farm.
 namespace Config {
     // Window & Map dimensions
-    constexpr int SCREEN_WIDTH = 640;
-    constexpr int SCREEN_HEIGHT = 480;
+    constexpr int SCREEN_WIDTH = 1600;
+    constexpr int SCREEN_HEIGHT = 900;
     constexpr int TILE_SIZE = 32;
     constexpr int MAP_COLS = 20;
     constexpr int MAP_ROWS = 15;
