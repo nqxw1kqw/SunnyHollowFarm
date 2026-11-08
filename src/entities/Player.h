@@ -35,6 +35,9 @@ public:
     float getY() const { return m_y; }
     Direction getFacing() const { return m_facing; }
     void setFacing(Direction facing) { m_facing = facing; }
+    bool isMoving() const { return m_isMoving; }
+    int getWalkFrameIndex() const { return m_animStep; }
+    int getAnimStep() const { return m_animStep; }
 
     // Computes the grid coordinates of the tile directly in front of the player.
     std::pair<int, int> getTargetTile() const;

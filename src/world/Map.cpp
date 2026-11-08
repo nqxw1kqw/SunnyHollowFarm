@@ -186,8 +186,21 @@ std::string Map::getShoreTileName(int tileX, int tileY) const {
     if (w) return "tile_shore_w.png";
     if (e) return "tile_shore_e.png";
 
-    int variant = getCellVariant(tileX, tileY, 2);
+    // Open pond water alternates tile_water_0 / tile_water_1 on ~600 ms global timer (all in sync)
+    int variant = getWaterVariant();
     return "tile_water_" + std::to_string(variant) + ".png";
+}
+
+void Map::update(float dt) {
+    m_waterAnimTimer += dt;
+    if (m_waterAnimTimer >= 1.2f) {
+        m_waterAnimTimer = std::fmod(m_waterAnimTimer, 1.2f);
+    }
+}
+
+int Map::getWaterVariant() const {
+    int v = static_cast<int>(std::floor(m_waterAnimTimer / 0.6f)) % 2;
+    return (v < 0) ? (v + 2) : v;
 }
 
 void Map::render(Renderer& renderer) const {

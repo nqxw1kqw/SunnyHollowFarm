@@ -1,18 +1,31 @@
 #include "entities/NPC.h"
 #include "world/Map.h"
+#include <cmath>
 
 NPC::NPC(int tileX, int tileY, NPCType type, const std::string& name)
     : m_tileX(tileX), m_tileY(tileY), m_type(type), m_name(name) {}
 
+void NPC::update(float dt) {
+    m_animTimer += dt;
+}
+
+int NPC::getIdleBob() const {
+    // Subtle idle breathing bob (±1 px sine wave)
+    float phase = (m_type == NPCType::Buyer) ? 1.5f : 0.0f;
+    return static_cast<int>(std::round(std::sin(m_animTimer * 2.5f + phase)));
+}
+
 void NPC::render(Renderer& renderer) const {
     const int px = m_tileX * Map::TILE_SIZE;
-    const int py = m_tileY * Map::TILE_SIZE;
+    const int basePy = m_tileY * Map::TILE_SIZE;
+    const int bob = getIdleBob();
+    const int py = basePy + bob;
+
+    // Soft entity drop shadow anchored to ground
+    renderer.drawRect(px + 6, basePy + 26, 20, 4, SDL_Color{20, 20, 20, 100});
 
     if (renderer.drawSprite(m_type == NPCType::Seller ? "npc_seller.png" : "npc_buyer.png",
                             px, py, 32, 32)) return;
-
-    // Soft entity drop shadow
-    renderer.drawRect(px + 6, py + 26, 20, 4, SDL_Color{20, 20, 20, 100});
 
     if (m_type == NPCType::Seller) {
         // Seller: Green merchant apron, shopkeeper cap, seed pouch

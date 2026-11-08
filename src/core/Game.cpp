@@ -150,7 +150,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 150) {
+                if (m_smokeTestFrames >= 151) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -351,6 +351,12 @@ void Game::handleInput() {
 void Game::update(float dt) {
     // Update on-screen feedback timer
     m_hud.update(dt);
+
+    // Living world animation updates
+    m_map.update(dt);
+    m_interiorMap.update(dt);
+    m_sellerNPC.update(dt);
+    m_buyerNPC.update(dt);
 
     // Player movements and world physics only progress if modals are closed
     Map& activeMap = (m_location == Location::Farm) ? m_map : m_interiorMap;
@@ -675,6 +681,52 @@ void Game::update(float dt) {
             std::cout << "[Smoke Test] Connected terrain verified: deterministic variant=" << v1
                       << ", NW corner shore=" << nwShore << ", North edge shore=" << nShore
                       << ", center water=" << centerWater << "!" << std::endl;
+        } else if (m_smokeTestFrames == 149) {
+            // PART A Living-world animation verification:
+            // 1. Walk frame index advances while moving and returns to standing when stopped
+            Input testInput;
+            m_player.update(0.0f, testInput, m_map);
+            assert(m_player.getWalkFrameIndex() == 0 && "Idle player must show standing frame (index 0)");
+
+            // Advance movement (~8 fps = 0.125s per step)
+            testInput.setKeyDown(SDL_SCANCODE_D, true);
+            m_player.update(0.13f, testInput, m_map);
+            int movingFrame1 = m_player.getWalkFrameIndex();
+            assert(movingFrame1 == 1 && "Walk frame index must advance while moving");
+
+            m_player.update(0.13f, testInput, m_map);
+            int movingFrame2 = m_player.getWalkFrameIndex();
+            assert(movingFrame2 == 2 && "Walk frame index must continue advancing");
+
+            // Stop moving -> returns to standing frame
+            testInput.setKeyDown(SDL_SCANCODE_D, false);
+            m_player.update(0.01f, testInput, m_map);
+            assert(m_player.getWalkFrameIndex() == 0 && "Walk frame index must return to standing (0) when stopped");
+
+            // 2. Animated water: pond water alternates tile_water_0 / tile_water_1 across 600 ms timer boundary
+            m_map.setWaterTimer(0.1f);
+            assert(m_map.getWaterVariant() == 0);
+            assert(m_map.getShoreTileName(17, 12) == "tile_water_0.png");
+            assert(m_map.getShoreTileName(16, 11) == "tile_shore_nw.png");
+            assert(m_map.getShoreTileName(17, 11) == "tile_shore_n.png");
+
+            m_map.setWaterTimer(0.65f);
+            assert(m_map.getWaterVariant() == 1);
+            assert(m_map.getShoreTileName(17, 12) == "tile_water_1.png");
+            assert(m_map.getShoreTileName(16, 11) == "tile_shore_nw.png");
+            assert(m_map.getShoreTileName(17, 11) == "tile_shore_n.png");
+
+            // 3. NPC idle bob stays within ±1 px
+            m_sellerNPC.setAnimTimer(0.0f);
+            int bob0 = m_sellerNPC.getIdleBob();
+            assert(std::abs(bob0) <= 1);
+            m_sellerNPC.update(0.65f);
+            int bob1 = m_sellerNPC.getIdleBob();
+            assert(std::abs(bob1) <= 1);
+
+            std::cout << "[Smoke Test] Living-world animation verified: walk frame advances ("
+                      << movingFrame1 << " -> " << movingFrame2 << " -> standing 0), water flips across 600ms boundary (variant 0 -> 1, static shores), NPC idle bob="
+                      << bob1 << "!" << std::endl;
         }
     }
 }

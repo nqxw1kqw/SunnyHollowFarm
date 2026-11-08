@@ -111,14 +111,14 @@ void Player::update(float dt, const Input& input, const Map& map) {
             m_y = newY;
         }
 
-        // Advance walk animation cycle
+        // Advance walk animation cycle at steady ~8 fps rate (0.125s per frame)
         m_animTimer += dt;
-        if (m_animTimer >= 0.15f) {
-            m_animTimer = 0.0f;
+        while (m_animTimer >= 0.125f) {
+            m_animTimer -= 0.125f;
             m_animStep = (m_animStep + 1) % 4; // 0: neutral, 1: left, 2: neutral, 3: right
         }
     } else {
-        // Idle pose when not moving
+        // Idle pose when not moving: show standing frame (neutral)
         m_animStep = 0;
         m_animTimer = 0.0f;
     }

@@ -19,6 +19,12 @@ public:
     NPCType getType() const { return m_type; }
     const std::string& getName() const { return m_name; }
 
+    // Updates idle motion animation timer
+    void update(float dt);
+    float getAnimTimer() const { return m_animTimer; }
+    void setAnimTimer(float t) { m_animTimer = t; }
+    int getIdleBob() const;
+
     // Renders custom placeholder pixel art for the NPC
     void render(Renderer& renderer) const;
 
@@ -27,4 +33,5 @@ private:
     int m_tileY = 0;
     NPCType m_type = NPCType::Seller;
     std::string m_name;
+    float m_animTimer = 0.0f;
 };

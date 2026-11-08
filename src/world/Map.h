@@ -35,11 +35,18 @@ public:
     // Returns the contract filename for water/shore tile at (tileX, tileY)
     std::string getShoreTileName(int tileX, int tileY) const;
 
+    // Global water animation (~600 ms timer alternating tile_water_0 and tile_water_1)
+    void update(float dt);
+    float getWaterTimer() const { return m_waterAnimTimer; }
+    void setWaterTimer(float t) { m_waterAnimTimer = t; }
+    int getWaterVariant() const;
+
     // Renders the entire tile map using connected regional terrain and sprites with graceful fallbacks.
     void render(Renderer& renderer) const;
 
 private:
     std::array<Tile, WIDTH * HEIGHT> m_tiles;
+    float m_waterAnimTimer = 0.0f;
 
     int getIndex(int tileX, int tileY) const {
         return tileY * WIDTH + tileX;

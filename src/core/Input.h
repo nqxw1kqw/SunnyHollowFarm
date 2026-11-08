@@ -22,6 +22,18 @@ public:
     // True only once when the key transitions from up to down (ignores OS key repeat).
     bool isKeyPressed(SDL_Scancode key) const;
 
+    // Simulation / testing setters
+    void setKeyDown(SDL_Scancode key, bool down) {
+        if (static_cast<size_t>(key) < m_keysDown.size()) {
+            m_keysDown[key] = down;
+        }
+    }
+    void setKeyPressed(SDL_Scancode key, bool pressed) {
+        if (static_cast<size_t>(key) < m_keysPressed.size()) {
+            m_keysPressed[key] = pressed;
+        }
+    }
+
 private:
     bool m_quitRequested = false;
     std::array<bool, SDL_NUM_SCANCODES> m_keysDown{};
