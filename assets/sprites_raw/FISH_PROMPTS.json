@@ -1,0 +1,58 @@
+{
+  "generator": "built-in image_gen",
+  "assets": [
+    {
+      "filename": "item_fish.png",
+      "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nUse case: stylized-concept\nAsset type: 32x32 inventory item icon for Sunny Hollow Farm.\nSubject: a single freshly caught silvery blue fish with a warm orange fin accent, side view, head pointing right, small dark eye, forked tail. Compact simple silhouette, crisp chunky pixel clusters, 2-3 tones per color, dark brown outline equivalent to one pixel at final size. Match the reference item icons' scale: centered inside a square transparent canvas, subject occupies about 24 of 32 pixels across, generous transparent margin, no ground shadow or scenery. This is the raw fish counterpart to a grilled fish icon. Do not include plate, hook, line, bubbles, or extra objects.",
+      "raw_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        175,
+        427,
+        1088,
+        887
+      ],
+      "resized_subject": [
+        24,
+        12
+      ],
+      "offset": [
+        4,
+        10
+      ],
+      "final_size": [
+        32,
+        32
+      ]
+    },
+    {
+      "filename": "item_grilled_fish.png",
+      "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nUse case: stylized-concept\nAsset type: 32x32 inventory food item icon for Sunny Hollow Farm.\nInput image: reference image of the raw fish; preserve its recognizable body shape, head pointing right, forked tail, eye, and fin positions.\nSubject: the SAME fish now grilled whole, golden-brown and appetizing, with two or three simple dark brown grill marks and warm golden fins, served on one small wooden skewer through the fish. Side view of fish, no plate needed. Single centered food icon, square transparent canvas, overall skewer and fish occupy about 24 of 32 pixels across with transparent margins. Crisp chunky pixel clusters, dark brown outline equivalent to 1px at final size, flat 2-3 tones per color. No garnish, smoke, scenery, lettering, or extra objects. Match the compact scale of the existing Sunny Hollow Farm item icons.",
+      "raw_size": [
+        1254,
+        1254
+      ],
+      "crop": [
+        128,
+        427,
+        1129,
+        887
+      ],
+      "resized_subject": [
+        24,
+        11
+      ],
+      "offset": [
+        4,
+        10
+      ],
+      "final_size": [
+        32,
+        32
+      ]
+    }
+  ],
+  "processing": "Threshold raw alpha at 128 to find visible bounds; crop to those bounds; fit proportionally inside 24x24 with NEAREST; center on transparent 32x32; snap RGB to existing process_assets.py 38-color palette without dithering; threshold alpha at 128."
+}

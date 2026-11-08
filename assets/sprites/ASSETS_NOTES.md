@@ -208,3 +208,29 @@ palette substitution, smoothing, or edge repair was applied. All 22 finals were
 checked for 32×32 dimensions and fully opaque alpha. The sheet was visually
 inspected for layout and bank orientations. Generated shading and irregular bank
 edges remain; exact pixel-for-pixel seamless joins are not guaranteed or verified.
+
+## Fish item icons
+
+| File | Final size | Subject |
+|---|---|---|
+| `item_fish.png` | 32×32 | Fresh silvery-blue fish, orange fins, side view facing right |
+| `item_grilled_fish.png` | 32×32 | Same fish grilled golden-brown, three grill marks, small wooden skewer |
+
+Both were generated with the built-in image generator; the raw fish was used as
+the grilled version's visual reference. Untouched 1254×1254 RGBA raw PNGs are in
+`../sprites_raw/` under matching filenames. Exact prompts and crop/placement
+measurements are recorded in `../sprites_raw/FISH_PROMPTS.json`. Both prompts
+begin verbatim with PROMPT_PACK.md Section 4's style guide.
+
+Existing tomato, carrot, wheat, salad, and bread icons were checked for framing:
+their visible widths range from 20 to 24 pixels. Each fish is fitted proportionally
+to a 24×24 box and centered on a transparent 32×32 canvas. Crop bounds use raw
+alpha >=128. All resizing uses `Image.Resampling.NEAREST`; RGB is snapped to the
+existing 38-color palette without dithering and alpha is thresholded at 128.
+The fish occupies 24×12 pixels; the skewered fish occupies 24×11 pixels.
+The original processing script does not rebuild these additions.
+
+Validation: both finals are nonempty 32×32 RGBA PNGs with binary alpha,
+transparent margins, and colors from the shared palette. Raw and final images
+were visually inspected. Only assets and notes changed; no runtime integration
+or code changes were made, and no game build was needed.
