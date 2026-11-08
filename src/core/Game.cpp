@@ -180,7 +180,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 155) {
+                if (m_smokeTestFrames >= 156) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -352,6 +352,18 @@ bool Game::eatSelectedItem() {
     std::cout << "[Eat] " << banner << " [Energy: " << m_player.getEnergy()
               << "/" << m_player.getMaxEnergy() << "]" << std::endl;
     return true;
+}
+
+bool Game::tryStartFishing() {
+    if (m_location != Location::Farm || isInputLocked() ||
+        m_inventoryUI.isOpen() || m_cookingUI.isOpen() || m_shopUI.isOpen()) {
+        return false;
+    }
+    auto [tx, ty] = m_player.getTargetTile();
+    if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Water) {
+        return m_fishingSystem.startFishing(tx, ty, m_player, &m_hud, &m_audio);
+    }
+    return false;
 }
 
 void Game::handleInput() {
@@ -550,7 +562,7 @@ void Game::handleInput() {
 
         // 5. Fishing interaction check (facing pond water tile from the bank)
         if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Water) {
-            m_fishingSystem.startFishing(tx, ty, m_player, &m_hud, &m_audio);
+            tryStartFishing();
             return;
         }
 
@@ -1272,6 +1284,119 @@ void Game::update(float dt) {
             SaveSystem::removeSave("test_weather_save.json");
 
             std::cout << "[Smoke Test] Weather verified: deterministic day roll (Days 1-5 Sunny, Day 6 Rainy), rain auto-watering with 2.5x growth boost, and save/load persistence!" << std::endl;
+        } else if (m_smokeTestFrames == 155) {
+            // PART D Pond Fishing System verification:
+            // 1. State machine integration constraints
+            m_player.placeAtTileCenter(15, 11);
+            m_player.setFacing(Direction::Right);
+
+            // Cannot fish indoors
+            m_location = Location::FarmhouseInterior;
+            bool fishIndoor = tryStartFishing();
+            assert(!fishIndoor && !m_fishingSystem.isFishing() && "Fishing cannot start indoors");
+            m_location = Location::Farm;
+
+            // Cannot fish while modal is open
+            m_inventoryUI.open();
+            bool fishModal = tryStartFishing();
+            assert(!fishModal && !m_fishingSystem.isFishing() && "Fishing cannot start while modal is open");
+            m_inventoryUI.close();
+
+            // Cannot fish while transitioning
+            m_fadePhase = FadePhase::FadeOut;
+            bool fishTransition = tryStartFishing();
+            assert(!fishTransition && !m_fishingSystem.isFishing() && "Fishing cannot start while transitioning");
+            m_fadePhase = FadePhase::None;
+
+            // Active fishing is cancelled if modal opens
+            m_player.setEnergy(50);
+            bool cast1 = tryStartFishing();
+            assert(cast1 && m_fishingSystem.isFishing());
+            m_inventoryUI.open();
+            if (m_inventoryUI.isOpen()) m_fishingSystem.cancel();
+            assert(!m_fishingSystem.isFishing() && "Opening modal cancels active fishing");
+            m_inventoryUI.close();
+
+            // Moving cancels fishing
+            m_player.setEnergy(50);
+            bool cast2 = tryStartFishing();
+            assert(cast2 && m_fishingSystem.isFishing());
+            m_fishingSystem.cancel();
+            assert(!m_fishingSystem.isFishing() && "Movement / cancel resets fishing state to None");
+
+            // 2. Successful catch adds Fish and costs 3 energy (deterministic via injection)
+            m_player.setEnergy(50);
+            int initialFishCount = m_inventory.getItemCount(ItemType::Fish);
+            m_fishingSystem.setNextWaitDuration(3.0f);
+            bool castOk = m_fishingSystem.startFishing(16, 11, m_player, &m_hud, &m_audio);
+            assert(castOk && "Starting fishing on pond water tile must succeed");
+            assert(m_player.getEnergy() == 47 && "Fishing must cost exactly 3 energy (50 -> 47)");
+            assert(m_fishingSystem.getState() == FishingState::Waiting);
+
+            // Advance time before wait expires (1.5s < 3.0s)
+            m_fishingSystem.update(1.5f, &m_hud);
+            assert(m_fishingSystem.getState() == FishingState::Waiting && "Still waiting for bite");
+
+            // Advance remaining time into bite window (total 3.1s >= 3.0s)
+            m_fishingSystem.update(1.6f, &m_hud);
+            assert(m_fishingSystem.getState() == FishingState::Bite && "Bite window must open after wait duration");
+
+            // Press E inside ~800ms bite window
+            bool catchOk = m_fishingSystem.handleActionInput(m_inventory, &m_hud, &m_audio);
+            assert(catchOk && "Pressing E during bite window must catch fish");
+            assert(m_inventory.getItemCount(ItemType::Fish) == initialFishCount + 1 && "Fish count must increment by exactly 1");
+            assert(m_player.getEnergy() == 47 && "Reeling in must not cost extra energy");
+            assert(m_fishingSystem.getState() == FishingState::None);
+            assert(m_hud.getActiveFeedback() == "CAUGHT 1 FISH!");
+
+            // 3. Early press cancels with no fish (no refund)
+            m_fishingSystem.setNextWaitDuration(4.0f);
+            m_fishingSystem.startFishing(16, 11, m_player, &m_hud, &m_audio);
+            assert(m_player.getEnergy() == 44 && "Energy reduced by 3 (47 -> 44)");
+            assert(m_fishingSystem.getState() == FishingState::Waiting);
+
+            // Advance 1.0s (less than 4.0s) and press E early
+            m_fishingSystem.update(1.0f, &m_hud);
+            assert(m_fishingSystem.getState() == FishingState::Waiting);
+            bool earlyHandled = m_fishingSystem.handleActionInput(m_inventory, &m_hud, &m_audio);
+            assert(earlyHandled && "Early action handled");
+            assert(m_fishingSystem.getState() == FishingState::None && "Early press cancels fishing session");
+            assert(m_inventory.getItemCount(ItemType::Fish) == initialFishCount + 1 && "No fish awarded on early press");
+            assert(m_player.getEnergy() == 44 && "No energy refund on early press");
+            assert(m_hud.getActiveFeedback() == "TOO EARLY! FISH SCARED AWAY!");
+
+            // 4. Expired window = fish escapes
+            m_fishingSystem.setNextWaitDuration(2.0f);
+            m_fishingSystem.startFishing(16, 11, m_player, &m_hud, &m_audio);
+            assert(m_player.getEnergy() == 41 && "Energy reduced by 3 (44 -> 41)");
+            m_fishingSystem.update(2.05f, &m_hud);
+            assert(m_fishingSystem.getState() == FishingState::Bite && "Bite window opened");
+
+            // Let bite window pass (> 0.8s) without pressing E
+            m_fishingSystem.update(0.85f, &m_hud);
+            assert(m_fishingSystem.getState() == FishingState::None && "Expired bite window returns state to None");
+            assert(m_inventory.getItemCount(ItemType::Fish) == initialFishCount + 1 && "No fish awarded when window expires");
+            assert(m_hud.getActiveFeedback() == "THE FISH ESCAPED!");
+
+            // 5. Full-inventory escape path (full bag = fish escapes with banner)
+            Inventory backup = m_inventory;
+            for (auto& slot : m_inventory.getSlots()) {
+                slot.type = ItemType::Wheat;
+                slot.count = Config::MAX_STACK_SIZE;
+            }
+            assert(!m_inventory.hasSpaceFor(ItemType::Fish, 1) && "Bag must be completely full");
+            m_fishingSystem.setNextWaitDuration(2.0f);
+            m_fishingSystem.startFishing(16, 11, m_player, &m_hud, &m_audio);
+            m_fishingSystem.update(2.05f, &m_hud);
+            assert(m_fishingSystem.getState() == FishingState::Bite);
+
+            bool fullHandled = m_fishingSystem.handleActionInput(m_inventory, &m_hud, &m_audio);
+            assert(fullHandled);
+            assert(m_fishingSystem.getState() == FishingState::None);
+            assert(m_hud.getActiveFeedback() == "INVENTORY FULL! FISH ESCAPED!");
+            m_inventory = backup;
+
+            std::cout << "[Smoke Test] Fishing system verified: state machine clean, catch (+1 fish, -3 energy), early cancel, timeout escape, and full bag escape!" << std::endl;
         }
     }
 }
@@ -1948,7 +2073,63 @@ void Game::updatePlaytest(float dt) {
         assert(m_timeSystem.getDay() == 6);
 
         std::cout << "[PASS] Step 15: Weather verified across days: Day 6 Rainy auto-waters crops with 2.5x boost, Day 7 Sunny dries soil, and weather persists in save file!" << std::endl;
-    } else if (m_playtestFrames >= 165) {
+    } else if (m_playtestFrames == 165) {
+        // Step 16: Pond fishing, cooking Grilled Fish at stove, and selling both to Buyer NPC
+        assert(m_inventory.getMoney() == 89 && "Wallet starts at 89G before Step 16");
+        assert(m_location == Location::Farm);
+
+        // 1. Move to pond bank at (15, 12) facing Right toward pond water tile (16, 12)
+        m_player.placeAtTileCenter(15, 12);
+        m_player.setFacing(Direction::Right);
+        auto [tx, ty] = m_player.getTargetTile();
+        assert(tx == 16 && ty == 12 && m_map.getTile(tx, ty).getType() == TileType::Water);
+
+        // 2. Catch fish #1 using deterministic test injection
+        m_fishingSystem.setNextWaitDuration(2.0f);
+        bool start1 = m_fishingSystem.startFishing(tx, ty, m_player, &m_hud, &m_audio);
+        assert(start1 && "First cast at pond succeeds");
+        m_fishingSystem.update(2.05f, &m_hud);
+        assert(m_fishingSystem.getState() == FishingState::Bite && "Bite window open");
+        bool catch1 = m_fishingSystem.handleActionInput(m_inventory, &m_hud, &m_audio);
+        assert(catch1 && "Catching first fish succeeds");
+        assert(m_inventory.getItemCount(ItemType::Fish) == 1 && "1x Fish in inventory");
+
+        // 3. Catch fish #2 so we have one to cook and one to sell
+        m_fishingSystem.setNextWaitDuration(2.0f);
+        bool start2 = m_fishingSystem.startFishing(tx, ty, m_player, &m_hud, &m_audio);
+        assert(start2 && "Second cast at pond succeeds");
+        m_fishingSystem.update(2.05f, &m_hud);
+        assert(m_fishingSystem.getState() == FishingState::Bite && "Bite window open");
+        bool catch2 = m_fishingSystem.handleActionInput(m_inventory, &m_hud, &m_audio);
+        assert(catch2 && "Catching second fish succeeds");
+        assert(m_inventory.getItemCount(ItemType::Fish) == 2 && "2x Fish in inventory");
+
+        // 4. Cook 1x Grilled Fish at the stove (consumes 1x Fish, adds 1x Grilled Fish)
+        const Recipe* r = m_cookingSystem.findRecipeByDish(ItemType::GrilledFish);
+        assert(r != nullptr && "Grilled Fish recipe must be registered in cooking system");
+        bool cooked = m_cookingSystem.cook(ItemType::GrilledFish, m_inventory, &m_hud, &m_audio);
+        assert(cooked && "Cooking Grilled Fish at stove succeeds");
+        assert(m_inventory.getItemCount(ItemType::Fish) == 1 && "1x Fish remains in inventory");
+        assert(m_inventory.getItemCount(ItemType::GrilledFish) == 1 && "1x Grilled Fish now in inventory");
+
+        // 5. Sell 1x Fish (30G) and 1x Grilled Fish (55G) to the Buyer NPC with exact wallet assertions
+        assert(m_shopSystem.getSellPrice(ItemType::Fish) == 30 && "Buyer buys Fish for 30G per prices.txt");
+        assert(m_shopSystem.getSellPrice(ItemType::GrilledFish) == 55 && "Buyer buys Grilled Fish for 55G per prices.txt");
+
+        // Sell 1x Fish: 89G + 30G = 119G
+        bool soldFish = m_shopSystem.sellItem(ItemType::Fish, 1, m_inventory, &m_hud, &m_audio);
+        assert(soldFish && "Selling 1x Fish to Buyer succeeds");
+        assert(m_inventory.getItemCount(ItemType::Fish) == 0 && "Fish consumed from inventory");
+        assert(m_inventory.getMoney() == 119 && "Wallet must be exactly 89 + 30 = 119G");
+
+        // Sell 1x Grilled Fish: 119G + 55G = 174G
+        bool soldGrilled = m_shopSystem.sellItem(ItemType::GrilledFish, 1, m_inventory, &m_hud, &m_audio);
+        assert(soldGrilled && "Selling 1x Grilled Fish to Buyer succeeds");
+        assert(m_inventory.getItemCount(ItemType::GrilledFish) == 0 && "Grilled Fish consumed from inventory");
+        assert(m_inventory.getMoney() == 174 && "Wallet must be exactly 119 + 55 = 174G");
+
+        std::cout << "[PASS] Step 16: Caught 2x Fish, cooked 1x Grilled Fish, and sold Fish (30G) & Grilled Fish (55G) to Buyer (Wallet: 174G)" << std::endl;
+    } else if (m_playtestFrames >= 175) {
         std::cout << "[PASS] Full playthrough playtest and farmhouse interior verifications passed cleanly across "
                   << m_timeSystem.getDay() << " in-game days!" << std::endl;
         m_isRunning = false;

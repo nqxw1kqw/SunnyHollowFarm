@@ -81,3 +81,27 @@ For standalone packaging or distribution, ensure the following runtime libraries
 - `crop_type` (String): Planted crop type (`"Tomato"`, `"Wheat"`, `"Carrot"`, or `"None"`).
 - `growth_stage` (Integer): Growth stage enum (1: Seed, 2: Sprout, 3: Growing, 4: Harvest, 0: None).
 - `stage_timer` (Float): Accumulated stage growth progress timer in seconds.
+
+## Pond Fishing System
+
+### Overview & Controls
+- **Starting Fishing (Key E):** Face any natural pond water tile (bottom-right pond area, coordinates x=16..18, y=11..13) from the bank and press **E** (or Space/Action).
+  - Casting line costs **3 Energy** and plays a splash sound effect (`SFX::Water`).
+  - An animated fishing float/bobber appears gently bobbing on the targeted water tile.
+- **Bite Window & Catching:**
+  - After a randomized wait of **2 to 5 seconds** (seeded RNG; deterministic under test injection), a bite occurs.
+  - A bite window opens for approximately **800 ms**: an animated sparkle (`fx_sparkle`) and an exclamation prompt (`!`) appear directly on the water tile.
+  - Press **E** inside the bite window to reel in **1x Fish** (announced by HUD banner `CAUGHT 1 FISH!`).
+- **Scare & Escape Rules:**
+  - **Early Press:** Pressing **E** too early before the bite window scares the fish away; fishing cancels with banner `TOO EARLY! FISH SCARED AWAY!` and no energy refund.
+  - **Timeout Escape:** Letting the ~800 ms bite window expire without pressing **E** allows the fish to escape (`THE FISH ESCAPED!`).
+  - **Inventory Capacity:** If inventory has no free space, the fish cannot be stored and escapes with banner `INVENTORY FULL! FISH ESCAPED!`.
+  - **Movement & Modals:** Moving with directional keys (WASD/arrows) or opening any modal (Inventory, Cooking, Shop) immediately cancels the active fishing session.
+- **State Machine Integration:** Fishing is only allowed outdoors on the farm; it cannot be triggered indoors, while any modal is open, or during screen transitions.
+
+### Prices & Economy (`assets/data/prices.txt`)
+- **Fish:** Not sold by the Seller NPC. Silas the Buyer NPC purchases fresh Fish for **30G**.
+- **Grilled Fish:** Silas the Buyer NPC purchases Grilled Fish for **55G**.
+
+### Cooking Recipes (`assets/data/recipes.txt`)
+- **Grilled Fish:** 1x Fish (cooked at either the outdoor farmhouse patio stove or the indoor kitchen stove).
