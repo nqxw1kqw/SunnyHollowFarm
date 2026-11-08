@@ -21,6 +21,7 @@ namespace Config {
     constexpr int ENERGY_COST_WATER = 3;     // Watering tilled soil
     constexpr int ENERGY_COST_PLANT = 2;     // Sowing a seed onto tilled soil
     constexpr int ENERGY_COST_HARVEST = 4;   // Harvesting mature produce
+    constexpr int ENERGY_COST_FISH = 3;      // Fishing at the pond water tile
 
     // Inventory grid specifications
     constexpr int INVENTORY_COLS = 6;

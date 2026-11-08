@@ -15,7 +15,9 @@ enum class ItemType {
     Carrot,
     Wheat,
     Salad,
-    Bread
+    Bread,
+    Fish,
+    GrilledFish
 };
 
 // Metadata for items including display names, descriptions, and economy tags.

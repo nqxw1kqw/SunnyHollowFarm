@@ -41,6 +41,7 @@ bool CookingSystem::loadRecipes(const std::string& filePath) {
         // Built-in fallback
         m_recipes.push_back({ItemType::Salad, "Salad", {{ItemType::Tomato, 2}}});
         m_recipes.push_back({ItemType::Bread, "Bread", {{ItemType::Wheat, 3}}});
+        m_recipes.push_back({ItemType::GrilledFish, "Grilled Fish", {{ItemType::Fish, 1}}});
         return false;
     }
 
@@ -84,6 +85,10 @@ bool CookingSystem::loadRecipes(const std::string& filePath) {
             if (trimmedToken.empty()) continue;
 
             size_t colonPos = trimmedToken.find(':');
+            size_t xPos = (colonPos == std::string::npos) ? trimmedToken.find('x') : std::string::npos;
+            if (xPos == std::string::npos && colonPos == std::string::npos) {
+                xPos = trimmedToken.find('X');
+            }
             std::string ingName;
             int count = 1;
 
@@ -91,6 +96,13 @@ bool CookingSystem::loadRecipes(const std::string& filePath) {
                 ingName = trim(trimmedToken.substr(0, colonPos));
                 try {
                     count = std::stoi(trim(trimmedToken.substr(colonPos + 1)));
+                } catch (...) {
+                    count = 1;
+                }
+            } else if (xPos != std::string::npos) {
+                ingName = trim(trimmedToken.substr(0, xPos));
+                try {
+                    count = std::stoi(trim(trimmedToken.substr(xPos + 1)));
                 } catch (...) {
                     count = 1;
                 }

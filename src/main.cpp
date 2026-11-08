@@ -14,6 +14,12 @@ int main(int argc, char* argv[]) {
         }
     }
 
+    if (smokeTest || playtest) {
+#if defined(__unix__) || defined(__linux__) || defined(__APPLE__)
+        setenv("SDL_AUDIODRIVER", "dummy", 0);
+#endif
+    }
+
     Game game;
     // 20x15 tiles of 32x32 pixels = 640x480 resolution
     if (!game.init("Sunny Hollow Farm", 640, 480, smokeTest, playtest)) {

@@ -26,7 +26,9 @@ bool ShopSystem::loadPrices(const std::string& filePath) {
         ItemType::Wheat,
         ItemType::Carrot,
         ItemType::Salad,
-        ItemType::Bread
+        ItemType::Bread,
+        ItemType::Fish,
+        ItemType::GrilledFish
     };
 
     // Candidate paths to ensure loading works when launched from repo root or build dir
@@ -60,6 +62,8 @@ bool ShopSystem::loadPrices(const std::string& filePath) {
         m_prices[ItemType::Carrot]      = {30, 24};
         m_prices[ItemType::Salad]       = {50, 40};
         m_prices[ItemType::Bread]       = {60, 50};
+        m_prices[ItemType::Fish]        = {0, 30};
+        m_prices[ItemType::GrilledFish] = {0, 55};
         return false;
     }
 

@@ -18,3 +18,5 @@ Tomato = Buy:25, Sell:20
 Carrot = Buy:30, Sell:24
 Salad  = Buy:50, Sell:40
 Bread  = Buy:60, Sell:50
+Fish   = Buy:0, Sell:30
+Grilled Fish = Buy:0, Sell:55

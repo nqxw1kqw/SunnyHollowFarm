@@ -28,6 +28,12 @@ const ItemDefinition& getItemDefinition(ItemType type) {
     static const ItemDefinition breadDef{
         ItemType::Bread, "Fresh Bread", "A warm, crusty loaf baked from milled wheat.", 60, 50, false, true, 35
     };
+    static const ItemDefinition fishDef{
+        ItemType::Fish, "Fish", "A fresh fish caught from the pond.", 0, 30, false, false, 0
+    };
+    static const ItemDefinition grilledFishDef{
+        ItemType::GrilledFish, "Grilled Fish", "A hot grilled fish with crispy skin.", 0, 55, false, false, 0
+    };
 
     switch (type) {
         case ItemType::TomatoSeeds: return tomatoSeedsDef;
@@ -38,6 +44,8 @@ const ItemDefinition& getItemDefinition(ItemType type) {
         case ItemType::Wheat:        return wheatDef;
         case ItemType::Salad:        return saladDef;
         case ItemType::Bread:        return breadDef;
+        case ItemType::Fish:         return fishDef;
+        case ItemType::GrilledFish:  return grilledFishDef;
         default:                     return emptyDef;
     }
 }
@@ -53,6 +61,8 @@ void drawItemPlaceholder(Renderer& renderer, ItemType type, int x, int y, int si
         case ItemType::Wheat: sprite = "item_wheat.png"; break;
         case ItemType::Salad: sprite = "item_salad.png"; break;
         case ItemType::Bread: sprite = "item_bread.png"; break;
+        case ItemType::Fish: sprite = "item_fish.png"; break;
+        case ItemType::GrilledFish: sprite = "item_grilled_fish.png"; break;
         default: break;
     }
     if (sprite && renderer.drawSprite(sprite, x, y, size, size)) return;
@@ -138,6 +148,40 @@ void drawItemPlaceholder(Renderer& renderer, ItemType type, int x, int y, int si
             break;
         }
 
+        case ItemType::Fish: {
+            // Fish body: silvery-blue curved fish
+            renderer.drawRect(x + S(6), y + S(11), S(16), S(10), SDL_Color{70, 135, 195, 255});
+            renderer.drawRect(x + S(8), y + S(9), S(12), S(14), SDL_Color{90, 160, 225, 255});
+            // Light belly
+            renderer.drawRect(x + S(10), y + S(16), S(8), S(5), SDL_Color{205, 235, 250, 255});
+            // Orange-red tail fin
+            renderer.drawRect(x + S(22), y + S(8), S(4), S(16), SDL_Color{235, 110, 45, 255});
+            renderer.drawRect(x + S(25), y + S(6), S(3), S(20), SDL_Color{215, 90, 35, 255});
+            // Eye
+            renderer.drawRect(x + S(8), y + S(12), S(3), S(3), SDL_Color{250, 250, 250, 255});
+            renderer.drawRect(x + S(8), y + S(13), S(2), S(2), SDL_Color{20, 25, 30, 255});
+            // Dorsal fin
+            renderer.drawRect(x + S(11), y + S(6), S(6), S(3), SDL_Color{235, 110, 45, 255});
+            break;
+        }
+
+        case ItemType::GrilledFish: {
+            // Wooden skewer stick
+            renderer.drawRect(x + S(3), y + S(24), S(26), S(3), SDL_Color{175, 120, 65, 255});
+            // Golden-brown grilled fish body
+            renderer.drawRect(x + S(6), y + S(11), S(16), S(10), SDL_Color{195, 125, 55, 255});
+            renderer.drawRect(x + S(8), y + S(9), S(12), S(14), SDL_Color{220, 150, 75, 255});
+            // Tail fin
+            renderer.drawRect(x + S(22), y + S(8), S(4), S(16), SDL_Color{165, 95, 40, 255});
+            // Grill char marks
+            renderer.drawRect(x + S(10), y + S(9), S(2), S(14), SDL_Color{85, 45, 20, 255});
+            renderer.drawRect(x + S(14), y + S(9), S(2), S(14), SDL_Color{85, 45, 20, 255});
+            renderer.drawRect(x + S(18), y + S(9), S(2), S(14), SDL_Color{85, 45, 20, 255});
+            // Eye mark
+            renderer.drawRect(x + S(8), y + S(12), S(2), S(2), SDL_Color{60, 30, 15, 255});
+            break;
+        }
+
         default:
             break;
     }
@@ -152,6 +196,8 @@ ItemType itemTypeFromString(const std::string& name) {
     if (name == "Wheat" || name == "wheat") return ItemType::Wheat;
     if (name == "Salad" || name == "salad") return ItemType::Salad;
     if (name == "Bread" || name == "bread") return ItemType::Bread;
+    if (name == "Fish" || name == "fish") return ItemType::Fish;
+    if (name == "GrilledFish" || name == "Grilled Fish" || name == "grilled_fish" || name == "Grilled_Fish") return ItemType::GrilledFish;
     return ItemType::Empty;
 }
 
@@ -165,6 +211,8 @@ std::string itemTypeToString(ItemType type) {
         case ItemType::Wheat:        return "Wheat";
         case ItemType::Salad:        return "Salad";
         case ItemType::Bread:        return "Bread";
+        case ItemType::Fish:         return "Fish";
+        case ItemType::GrilledFish:  return "Grilled Fish";
         default:                     return "Empty";
     }
 }
