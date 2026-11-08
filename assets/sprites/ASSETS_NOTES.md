@@ -166,3 +166,45 @@ alpha including transparent pixels, shared palette, exact style-guide prompt
 prefixes, identical button/hover masks, and a uniform opaque panel center.
 Finals were visually inspected. No game build or integration test was needed for
 this assets-only change.
+
+## Connected terrain tileset
+
+Generated as one sheet with the built-in image generator. Untouched source:
+`../sprites_raw/terrain_tileset.png` (2048×768). Exact prompt:
+`../sprites_raw/TERRAIN_PROMPT.txt`, beginning verbatim with Section 4's style guide.
+Terrain-specific instructions override transparent surroundings with opaque,
+edge-to-edge terrain. No game code or runtime integration changed.
+
+### Layout map
+
+Eight columns × three rows; top-left origin, each raw cell 256×256.
+Names below omit the final `tile_` prefix and `.png` suffix.
+
+| Row | Column 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|---|---|
+| 1 | grass_0 | grass_1 | grass_2 | grass_3 | dirt_0 | dirt_1 | path_0 | path_1 |
+| 2 | water_0 | water_1 | shore_n | shore_s | shore_e | shore_w | spare grass A | spare grass B |
+| 3 | shore_ne | shore_nw | shore_se | shore_sw | grass_4 | grass_5 | grass_6 | grass_7 |
+
+The request lists **22 final filenames**, despite specifying 24 files. Row 2
+contains only six named cells; its two spare grass cells remain in the raw sheet
+and are not exported under invented filenames. All 22 named finals are present.
+
+### Shore naming
+
+Shore tiles are **water with grass banks along the named edges**:
+`shore_n` = top, `shore_s` = bottom, `shore_e` = right, `shore_w` = left.
+`shore_ne` = top + right, `shore_nw` = top + left,
+`shore_se` = bottom + right, `shore_sw` = bottom + left.
+Directions describe the bank position, not the direction toward open water.
+The two banks in each corner join into an L; the remaining interior is water.
+
+### Processing and validation
+
+Crop each named cell at `(column×256, row×256, 256, 256)` using zero-based
+coordinates, then resize directly to 32×32 with Pillow's
+`Image.Resampling.NEAREST` and save as RGBA PNG. No procedural terrain drawing,
+palette substitution, smoothing, or edge repair was applied. All 22 finals were
+checked for 32×32 dimensions and fully opaque alpha. The sheet was visually
+inspected for layout and bank orientations. Generated shading and irregular bank
+edges remain; exact pixel-for-pixel seamless joins are not guaranteed or verified.
