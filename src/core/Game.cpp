@@ -222,6 +222,7 @@ void Game::transitionTo(Location loc) {
 
 void Game::startTransition(TransitionAction action) {
     if (m_fadePhase != FadePhase::None) return;
+    m_fishingSystem.cancel();
     m_transitionAction = action;
     m_fadePhase = FadePhase::FadeOut;
     m_fadeTimer = 0.0f;
@@ -300,6 +301,7 @@ void Game::resetGame() {
     m_fadePhase = FadePhase::None;
     m_transitionAction = TransitionAction::None;
     m_fadeTimer = 0.0f;
+    m_fishingSystem.cancel();
     m_hud.showFeedback("RESET TO FRESH DAY 1", 3.0f);
     std::cout << "[Reset] F9 pressed: deleted save file and restarted at fresh Day 1." << std::endl;
 }
@@ -378,6 +380,9 @@ void Game::handleInput() {
 
     // Inventory toggle key (Tab or I)
     if (m_input.isKeyPressed(SDL_SCANCODE_TAB) || m_input.isKeyPressed(SDL_SCANCODE_I)) {
+        if (m_fishingSystem.isFishing()) {
+            m_fishingSystem.cancel();
+        }
         m_inventoryUI.toggle();
         if (m_inventoryUI.isOpen()) {
             m_audio.playSFX(SFX::UIOpen);
@@ -449,6 +454,12 @@ void Game::handleInput() {
         m_input.isKeyPressed(SDL_SCANCODE_E) ||
         m_input.isKeyPressed(SDL_SCANCODE_RETURN) ||
         m_input.isKeyPressed(SDL_SCANCODE_C)) {
+
+        // If fishing is active, handle reel-in or early press
+        if (m_fishingSystem.isFishing()) {
+            m_fishingSystem.handleActionInput(m_inventory, &m_hud, &m_audio);
+            return;
+        }
 
         if (m_location == Location::FarmhouseInterior) {
             auto [tx, ty] = m_player.getTargetTile();
@@ -537,7 +548,13 @@ void Game::handleInput() {
             return;
         }
 
-        // 5. Farming interaction
+        // 5. Fishing interaction check (facing pond water tile from the bank)
+        if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Water) {
+            m_fishingSystem.startFishing(tx, ty, m_player, &m_hud, &m_audio);
+            return;
+        }
+
+        // 6. Farming interaction
         m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud, &m_audio);
     }
 }
@@ -555,9 +572,28 @@ void Game::update(float dt) {
     m_sellerNPC.update(dt);
     m_buyerNPC.update(dt);
 
+    // Fishing system update & safety checks
+    if (m_fishingSystem.isFishing()) {
+        if (m_location != Location::Farm || isInputLocked() || m_inventoryUI.isOpen() || m_cookingUI.isOpen() || m_shopUI.isOpen()) {
+            m_fishingSystem.cancel();
+        } else {
+            m_fishingSystem.update(dt, &m_hud);
+        }
+    }
+
     // Player movements and world physics only progress if input is unlocked and modals are closed
     Map& activeMap = (m_location == Location::Farm) ? m_map : m_interiorMap;
     if (!isInputLocked() && !m_inventoryUI.isOpen() && !m_cookingUI.isOpen() && !m_shopUI.isOpen()) {
+        if (m_fishingSystem.isFishing()) {
+            const bool moveInput = m_input.isKeyDown(SDL_SCANCODE_W) || m_input.isKeyDown(SDL_SCANCODE_UP) ||
+                                   m_input.isKeyDown(SDL_SCANCODE_S) || m_input.isKeyDown(SDL_SCANCODE_DOWN) ||
+                                   m_input.isKeyDown(SDL_SCANCODE_A) || m_input.isKeyDown(SDL_SCANCODE_LEFT) ||
+                                   m_input.isKeyDown(SDL_SCANCODE_D) || m_input.isKeyDown(SDL_SCANCODE_RIGHT);
+            if (moveInput) {
+                m_fishingSystem.cancel();
+                m_hud.showFeedback("FISHING CANCELLED");
+            }
+        }
         m_player.update(dt, m_input, activeMap);
     }
     if (m_location == Location::Farm && m_timeSystem.getWeather() == Weather::Rainy) {
@@ -1285,8 +1321,9 @@ void Game::render() {
         // 1. Render terrain tile map
         m_map.render(m_renderer);
 
-        // 2. Render planted crops
+        // 2. Render planted crops and fishing effects
         m_farmSystem.render(m_renderer);
+        m_fishingSystem.render(m_renderer);
 
         // 3. Render merchant NPCs (Seller and Buyer)
         m_sellerNPC.render(m_renderer);
@@ -1345,6 +1382,13 @@ void Game::render() {
                 promptH = 24;
                 promptText = "COOK";
                 iconSprite = "ui_cooking_icon.png";
+                showPrompt = true;
+            } else if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Water && !m_fishingSystem.isFishing()) {
+                promptX = tx * Map::TILE_SIZE - 18;
+                promptY = ty * Map::TILE_SIZE - 28;
+                promptW = 68;
+                promptH = 24;
+                promptText = "[E] FISH";
                 showPrompt = true;
             }
         } else {
