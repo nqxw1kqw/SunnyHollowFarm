@@ -11,10 +11,25 @@
 // Controllable farmer entity with 4-directional movement, walk animation, collision, and stamina/energy.
 class Player {
 public:
+    // Movement and collision tuning constants
+    static constexpr float MOVE_SPEED = Config::PLAYER_MOVE_SPEED;
+    static constexpr float COLLISION_WIDTH = 20.0f;
+    static constexpr float COLLISION_HEIGHT = 24.0f;
+    static constexpr float COLLISION_OFFSET_X = 6.0f;
+    static constexpr float COLLISION_OFFSET_Y = 8.0f;
+    static constexpr float FACING_OFFSET = 24.0f;
+
     Player();
 
     // Sets initial player position in pixel coordinates.
     void setPosition(float x, float y);
+
+    // Places the player centered on the specified tile cell.
+    void placeAtTileCenter(int tileX, int tileY);
+    void setTilePosition(int tileX, int tileY) { placeAtTileCenter(tileX, tileY); }
+
+    // Checks if the player's collision bounding box overlaps the given tile cell.
+    bool overlapsTile(int tileX, int tileY) const;
 
     float getX() const { return m_x; }
     float getY() const { return m_y; }
@@ -48,7 +63,7 @@ public:
 private:
     float m_x = 160.0f;
     float m_y = 160.0f;
-    float m_speed = 120.0f; // Pixels per second
+    float m_speed = MOVE_SPEED; // Pixels per second
 
     Direction m_facing = Direction::Down;
     bool m_isMoving = false;

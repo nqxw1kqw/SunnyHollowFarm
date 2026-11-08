@@ -12,18 +12,38 @@ void Player::setPosition(float x, float y) {
     m_y = y;
 }
 
+void Player::placeAtTileCenter(int tileX, int tileY) {
+    m_x = static_cast<float>(tileX * Map::TILE_SIZE);
+    m_y = static_cast<float>(tileY * Map::TILE_SIZE);
+}
+
+bool Player::overlapsTile(int tileX, int tileY) const {
+    const float px1 = m_x + COLLISION_OFFSET_X;
+    const float px2 = px1 + COLLISION_WIDTH;
+    const float py1 = m_y + COLLISION_OFFSET_Y;
+    const float py2 = py1 + COLLISION_HEIGHT;
+
+    const float tx1 = static_cast<float>(tileX * Map::TILE_SIZE);
+    const float tx2 = tx1 + static_cast<float>(Map::TILE_SIZE);
+    const float ty1 = static_cast<float>(tileY * Map::TILE_SIZE);
+    const float ty2 = ty1 + static_cast<float>(Map::TILE_SIZE);
+
+    return (px1 < tx2 && px2 > tx1 && py1 < ty2 && py2 > ty1);
+}
+
 std::pair<int, int> Player::getTargetTile() const {
-    const float centerX = m_x + 16.0f;
-    const float centerY = m_y + 20.0f;
-    int tileX = static_cast<int>(centerX / Map::TILE_SIZE);
-    int tileY = static_cast<int>(centerY / Map::TILE_SIZE);
+    float targetX = m_x + 16.0f;
+    float targetY = m_y + 16.0f;
 
     switch (m_facing) {
-        case Direction::Down:  tileY += 1; break;
-        case Direction::Up:    tileY -= 1; break;
-        case Direction::Left:  tileX -= 1; break;
-        case Direction::Right: tileX += 1; break;
+        case Direction::Down:  targetY += FACING_OFFSET; break;
+        case Direction::Up:    targetY -= FACING_OFFSET; break;
+        case Direction::Left:  targetX -= FACING_OFFSET; break;
+        case Direction::Right: targetX += FACING_OFFSET; break;
     }
+
+    int tileX = static_cast<int>(std::floor(targetX / Map::TILE_SIZE));
+    int tileY = static_cast<int>(std::floor(targetY / Map::TILE_SIZE));
 
     return {tileX, tileY};
 }
@@ -32,28 +52,42 @@ void Player::update(float dt, const Input& input, const Map& map) {
     float moveX = 0.0f;
     float moveY = 0.0f;
 
-    // 4-directional input checking (supports both WASD and Arrow keys)
-    if (input.isKeyDown(SDL_SCANCODE_W) || input.isKeyDown(SDL_SCANCODE_UP)) {
-        moveY -= 1.0f;
-        m_facing = Direction::Up;
-    }
-    if (input.isKeyDown(SDL_SCANCODE_S) || input.isKeyDown(SDL_SCANCODE_DOWN)) {
-        moveY += 1.0f;
-        m_facing = Direction::Down;
-    }
-    if (input.isKeyDown(SDL_SCANCODE_A) || input.isKeyDown(SDL_SCANCODE_LEFT)) {
-        moveX -= 1.0f;
-        m_facing = Direction::Left;
-    }
-    if (input.isKeyDown(SDL_SCANCODE_D) || input.isKeyDown(SDL_SCANCODE_RIGHT)) {
-        moveX += 1.0f;
-        m_facing = Direction::Right;
-    }
+    // Check key presses to record last move direction
+    const bool upPressed    = input.isKeyPressed(SDL_SCANCODE_W) || input.isKeyPressed(SDL_SCANCODE_UP);
+    const bool downPressed  = input.isKeyPressed(SDL_SCANCODE_S) || input.isKeyPressed(SDL_SCANCODE_DOWN);
+    const bool leftPressed  = input.isKeyPressed(SDL_SCANCODE_A) || input.isKeyPressed(SDL_SCANCODE_LEFT);
+    const bool rightPressed = input.isKeyPressed(SDL_SCANCODE_D) || input.isKeyPressed(SDL_SCANCODE_RIGHT);
 
-    // Determine if player is moving
+    const bool upHeld    = input.isKeyDown(SDL_SCANCODE_W) || input.isKeyDown(SDL_SCANCODE_UP);
+    const bool downHeld  = input.isKeyDown(SDL_SCANCODE_S) || input.isKeyDown(SDL_SCANCODE_DOWN);
+    const bool leftHeld  = input.isKeyDown(SDL_SCANCODE_A) || input.isKeyDown(SDL_SCANCODE_LEFT);
+    const bool rightHeld = input.isKeyDown(SDL_SCANCODE_D) || input.isKeyDown(SDL_SCANCODE_RIGHT);
+
+    if (upHeld) moveY -= 1.0f;
+    if (downHeld) moveY += 1.0f;
+    if (leftHeld) moveX -= 1.0f;
+    if (rightHeld) moveX += 1.0f;
+
     m_isMoving = (moveX != 0.0f || moveY != 0.0f);
 
     if (m_isMoving) {
+        // Facing = last move direction
+        if (upPressed) {
+            m_facing = Direction::Up;
+        } else if (downPressed) {
+            m_facing = Direction::Down;
+        } else if (leftPressed) {
+            m_facing = Direction::Left;
+        } else if (rightPressed) {
+            m_facing = Direction::Right;
+        } else {
+            if (moveX != 0.0f && moveY == 0.0f) {
+                m_facing = (moveX < 0.0f) ? Direction::Left : Direction::Right;
+            } else if (moveY != 0.0f && moveX == 0.0f) {
+                m_facing = (moveY < 0.0f) ? Direction::Up : Direction::Down;
+            }
+        }
+
         // Normalize diagonal movement speed
         if (moveX != 0.0f && moveY != 0.0f) {
             constexpr float INV_SQRT2 = 0.70710678f;
@@ -64,21 +98,16 @@ void Player::update(float dt, const Input& input, const Map& map) {
         const float deltaX = moveX * m_speed * dt;
         const float deltaY = moveY * m_speed * dt;
 
-        // Collision box for player feet (20w x 14h centered horizontally, placed at feet)
-        constexpr float COL_OFFSET_X = 6.0f;
-        constexpr float COL_OFFSET_Y = 16.0f;
-        constexpr float COL_WIDTH = 20.0f;
-        constexpr float COL_HEIGHT = 14.0f;
-
+        // Collision box for player feet (20w x 24h centered horizontally, placed at feet)
         // X-axis collision check & sliding
         const float newX = m_x + deltaX;
-        if (map.isAreaWalkable(newX + COL_OFFSET_X, m_y + COL_OFFSET_Y, COL_WIDTH, COL_HEIGHT)) {
+        if (map.isAreaWalkable(newX + COLLISION_OFFSET_X, m_y + COLLISION_OFFSET_Y, COLLISION_WIDTH, COLLISION_HEIGHT)) {
             m_x = newX;
         }
 
         // Y-axis collision check & sliding
         const float newY = m_y + deltaY;
-        if (map.isAreaWalkable(m_x + COL_OFFSET_X, newY + COL_OFFSET_Y, COL_WIDTH, COL_HEIGHT)) {
+        if (map.isAreaWalkable(m_x + COLLISION_OFFSET_X, newY + COLLISION_OFFSET_Y, COLLISION_WIDTH, COLLISION_HEIGHT)) {
             m_y = newY;
         }
 

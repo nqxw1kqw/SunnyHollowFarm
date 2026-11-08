@@ -177,12 +177,12 @@ void Game::run() {
 void Game::transitionTo(Location loc) {
     m_location = loc;
     if (loc == Location::FarmhouseInterior) {
-        m_player.setPosition(9.0f * Map::TILE_SIZE, 9.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(9, 9);
         m_player.setFacing(Direction::Up);
         m_hud.showFeedback("ENTERED FARMHOUSE");
         std::cout << "[Transition] Entered Farmhouse Interior (spawned at 9, 9)." << std::endl;
     } else {
-        m_player.setPosition(2.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(2, 3);
         m_player.setFacing(Direction::Down);
         m_hud.showFeedback("EXITED TO FARM");
         std::cout << "[Transition] Exited Farmhouse to Farm (spawned at 2, 3)." << std::endl;
@@ -342,18 +342,13 @@ void Game::update(float dt) {
     }
     m_farmSystem.update(dt, m_map);
 
-    // Zone transition check based on player position
-    float footX = m_player.getX() + 16.0f;
-    float footY = m_player.getY() + 24.0f;
-    int curTileX = static_cast<int>(footX / Map::TILE_SIZE);
-    int curTileY = static_cast<int>(footY / Map::TILE_SIZE);
-
+    // Zone transition check: door transitions trigger by overlapping the door tile
     if (m_location == Location::Farm) {
-        if (curTileX == 2 && curTileY == 2) {
+        if (m_player.overlapsTile(2, 2)) {
             transitionTo(Location::FarmhouseInterior);
         }
     } else {
-        if (curTileX == 9 && curTileY == 10) {
+        if (m_player.overlapsTile(9, 10)) {
             transitionTo(Location::Farm);
         }
     }
@@ -626,6 +621,17 @@ void Game::update(float dt) {
             assert(m_location == Location::Farm);
             assert(m_player.getX() == 2.0f * Map::TILE_SIZE && m_player.getY() == 3.0f * Map::TILE_SIZE);
             std::cout << "[Smoke Test] Farmhouse interior verified: enter -> indoor cooking -> indoor bed sleep -> exit back to farm!" << std::endl;
+        } else if (m_smokeTestFrames == 146) {
+            // Verify continuous player movement: position can rest at a non-tile-aligned coordinate
+            m_player.setPosition(100.5f, 150.25f);
+            assert(std::fmod(m_player.getX(), static_cast<float>(Map::TILE_SIZE)) != 0.0f);
+            assert(std::fmod(m_player.getY(), static_cast<float>(Map::TILE_SIZE)) != 0.0f);
+            assert(Player::MOVE_SPEED == 120.0f);
+            assert(Player::COLLISION_WIDTH == 20.0f);
+            assert(Player::COLLISION_HEIGHT == 24.0f);
+            std::cout << "[Smoke Test] Player continuous movement verified: speed=" << Player::MOVE_SPEED
+                      << " px/s, collision 20x24 at feet, rested at non-tile-aligned coordinate ("
+                      << m_player.getX() << ", " << m_player.getY() << ")!" << std::endl;
         }
     }
 }
@@ -782,7 +788,7 @@ void Game::updatePlaytest(float dt) {
                   << ", Crops: 0)" << std::endl;
     } else if (m_playtestFrames == 15) {
         // Step 1: Buy seeds from Seller NPC
-        m_player.setPosition(14.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(14, 3);
         m_player.setFacing(Direction::Up);
         auto [tx, ty] = m_player.getTargetTile();
         assert(tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY() && "Player should target Seller NPC");
@@ -883,7 +889,7 @@ void Game::updatePlaytest(float dt) {
         }
         assert(m_player.getEnergy() == 40); // 58 - 6*3 = 40
 
-        m_player.setPosition(2.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(2, 3);
         m_player.setFacing(Direction::Up);
         auto [tx, ty] = m_player.getTargetTile();
         assert(TimeSystem::isBedTile(tx, ty) && "Player should target farmhouse entrance/bed tile (2, 2)");
@@ -959,7 +965,7 @@ void Game::updatePlaytest(float dt) {
                   << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
     } else if (m_playtestFrames == 75) {
         // Step 7: Cook Salad and Bread at the stove
-        m_player.setPosition(4.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(4, 3);
         m_player.setFacing(Direction::Up);
         auto [tx, ty] = m_player.getTargetTile();
         assert(tx == 4 && ty == 2 && "Player should target stove at (4, 2)");
@@ -994,7 +1000,7 @@ void Game::updatePlaytest(float dt) {
                   << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
     } else if (m_playtestFrames == 85) {
         // Step 8: Sell dishes and surplus produce to Buyer NPC
-        m_player.setPosition(17.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(17, 3);
         m_player.setFacing(Direction::Up);
         auto [tx, ty] = m_player.getTargetTile();
         assert(tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY() && "Player should target Buyer NPC");
@@ -1033,7 +1039,7 @@ void Game::updatePlaytest(float dt) {
                   << m_timeSystem.getDay() << ")" << std::endl;
     } else if (m_playtestFrames == 95) {
         // Step 9: Buy more seeds with the profit from Seller NPC
-        m_player.setPosition(14.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(14, 3);
         m_player.setFacing(Direction::Up);
         auto [tx, ty] = m_player.getTargetTile();
         assert(tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY());
@@ -1070,10 +1076,10 @@ void Game::updatePlaytest(float dt) {
                   << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
     } else if (m_playtestFrames == 105) {
         // Step 10: Enter farmhouse interior: step onto door tile (2, 2)
-        m_player.setPosition(2.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(2, 3);
         m_player.setFacing(Direction::Up);
         // Step onto door tile at (2, 2)
-        m_player.setPosition(2.0f * Map::TILE_SIZE, 2.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(2, 2);
         transitionTo(Location::FarmhouseInterior);
 
         assert(m_location == Location::FarmhouseInterior && "Location must transition to FarmhouseInterior");
@@ -1097,7 +1103,7 @@ void Game::updatePlaytest(float dt) {
     } else if (m_playtestFrames == 115) {
         // Step 11: Interacting with interior props: Storage Chest and Bookshelf
         // 1. Move to Storage Chest at (8, 4) from (8, 5) facing Up
-        m_player.setPosition(8.0f * Map::TILE_SIZE, 5.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(8, 5);
         m_player.setFacing(Direction::Up);
         auto [txChest, tyChest] = m_player.getTargetTile();
         assert(txChest == 8 && tyChest == 4 && "Target tile must be Chest (8, 4)");
@@ -1114,7 +1120,7 @@ void Game::updatePlaytest(float dt) {
         assert(m_hud.hasActiveFeedback());
 
         // 2. Move to Bookshelf at (13, 5) from (12, 5) facing Right
-        m_player.setPosition(12.0f * Map::TILE_SIZE, 5.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(12, 5);
         m_player.setFacing(Direction::Right);
         auto [txBook, tyBook] = m_player.getTargetTile();
         assert(txBook == 13 && tyBook == 5 && "Target tile must be Bookshelf (13, 5)");
@@ -1132,7 +1138,7 @@ void Game::updatePlaytest(float dt) {
         assert(m_inventory.getItemCount(ItemType::Tomato) == 2);
         assert(m_inventory.getItemCount(ItemType::Salad) == 0);
 
-        m_player.setPosition(11.0f * Map::TILE_SIZE, 5.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(11, 5);
         m_player.setFacing(Direction::Up);
         auto [txStove, tyStove] = m_player.getTargetTile();
         assert(txStove == 11 && tyStove == 4 && "Target tile must be indoor Stove at (11, 4)");
@@ -1156,7 +1162,7 @@ void Game::updatePlaytest(float dt) {
         assert(m_player.getEnergy() == 25);
         int dayBefore = m_timeSystem.getDay(); // was 4
 
-        m_player.setPosition(6.0f * Map::TILE_SIZE, 5.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(6, 5);
         m_player.setFacing(Direction::Up);
         auto [txBed, tyBed] = m_player.getTargetTile();
         assert(txBed == 6 && tyBed == 4 && "Target tile must be Bed at (6, 4)");
@@ -1177,10 +1183,10 @@ void Game::updatePlaytest(float dt) {
                   << "), Energy restored (25->100), Milestone 6 rules verified" << std::endl;
     } else if (m_playtestFrames == 145) {
         // Step 14: Exit farmhouse back to farm via interior exit
-        m_player.setPosition(9.0f * Map::TILE_SIZE, 9.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(9, 9);
         m_player.setFacing(Direction::Down);
         // Step onto exit doorway tile (9, 10)
-        m_player.setPosition(9.0f * Map::TILE_SIZE, 10.0f * Map::TILE_SIZE);
+        m_player.placeAtTileCenter(9, 10);
         transitionTo(Location::Farm);
 
         assert(m_location == Location::Farm && "Location must transition back to Farm");

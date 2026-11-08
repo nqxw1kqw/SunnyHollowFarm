@@ -10,6 +10,7 @@ namespace Config {
     constexpr int MAP_ROWS = 15;
 
     // Player starting stats & limits
+    constexpr float PLAYER_MOVE_SPEED = 120.0f; // Pixels per second
     constexpr int INITIAL_MONEY = 100;    // Sensible starting coin wallet
     constexpr int INITIAL_ENERGY = 100;   // Max starting stamina
     constexpr int MAX_ENERGY = 100;
