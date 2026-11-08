@@ -19,6 +19,7 @@ public:
     float getX() const { return m_x; }
     float getY() const { return m_y; }
     Direction getFacing() const { return m_facing; }
+    void setFacing(Direction facing) { m_facing = facing; }
 
     // Computes the grid coordinates of the tile directly in front of the player.
     std::pair<int, int> getTargetTile() const;

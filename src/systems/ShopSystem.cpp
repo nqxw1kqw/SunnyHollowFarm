@@ -147,6 +147,14 @@ bool ShopSystem::buyItem(ItemType item, int count, Inventory& inventory, HUD* hu
         return false;
     }
 
+    if (!inventory.hasSpaceFor(item, count)) {
+        std::cout << "[ShopSystem] Buy refused: Inventory full!" << std::endl;
+        if (hud) {
+            hud->showFeedback("INVENTORY FULL!");
+        }
+        return false;
+    }
+
     // Deduct coins and deposit items
     inventory.spendMoney(totalCost);
     inventory.addItem(item, count);

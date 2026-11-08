@@ -33,6 +33,7 @@ public:
     }
 
     int getSelectedIndex() const { return m_selectedIndex; }
+    void setSelectedIndex(int idx) { m_selectedIndex = idx; }
 
     // Handles keyboard inputs (Arrow keys / WASD / Enter / Space / Tab / Escape)
     void handleInput(const Input& input, Inventory& inventory, ShopSystem& shopSystem, HUD* hud = nullptr);

@@ -4,16 +4,19 @@
 
 int main(int argc, char* argv[]) {
     bool smokeTest = false;
+    bool playtest = false;
 
     for (int i = 1; i < argc; ++i) {
         if (std::strcmp(argv[i], "--smoke-test") == 0 || std::strcmp(argv[i], "-t") == 0) {
             smokeTest = true;
+        } else if (std::strcmp(argv[i], "--playtest") == 0 || std::strcmp(argv[i], "-p") == 0) {
+            playtest = true;
         }
     }
 
     Game game;
     // 20x15 tiles of 32x32 pixels = 640x480 resolution
-    if (!game.init("Sunny Hollow Farm", 640, 480, smokeTest)) {
+    if (!game.init("Sunny Hollow Farm", 640, 480, smokeTest, playtest)) {
         std::cerr << "Failed to initialize game!" << std::endl;
         return 1;
     }

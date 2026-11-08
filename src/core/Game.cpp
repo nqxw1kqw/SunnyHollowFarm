@@ -6,8 +6,9 @@ Game::~Game() {
     cleanUp();
 }
 
-bool Game::init(const char* title, int width, int height, bool smokeTestMode) {
+bool Game::init(const char* title, int width, int height, bool smokeTestMode, bool playtestMode) {
     m_smokeTestMode = smokeTestMode;
+    m_playtestMode = playtestMode;
 
     // Initialize SDL video subsystem
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER) != 0) {
@@ -97,6 +98,9 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode) {
     if (m_smokeTestMode) {
         std::cout << "[Smoke Test Mode active: running test sequence then cleanly exiting]" << std::endl;
     }
+    if (m_playtestMode) {
+        std::cout << "[Playtest Mode active: executing full playthrough playtest across days]" << std::endl;
+    }
 
     return true;
 }
@@ -136,6 +140,14 @@ void Game::run() {
                 if (m_smokeTestFrames >= 150) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
+                    break;
+                }
+            }
+
+            if (m_playtestMode) {
+                m_playtestFrames++;
+                updatePlaytest(Time::FIXED_DT);
+                if (!m_isRunning) {
                     break;
                 }
             }
@@ -212,15 +224,17 @@ void Game::handleInput() {
             return;
         }
 
-        // 2. Seller NPC interaction check
-        if (tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY()) {
+        // 2. Seller NPC interaction check (NPC tile (14, 2) or seller stall counter x=13..15, y=1)
+        if ((tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY()) ||
+            (tx >= 13 && tx <= 15 && ty == 1)) {
             m_shopUI.open(ShopMode::Buy);
             std::cout << "[Shop] Opened Seller NPC shop at (" << tx << ", " << ty << ")." << std::endl;
             return;
         }
 
-        // 3. Buyer NPC interaction check
-        if (tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY()) {
+        // 3. Buyer NPC interaction check (NPC tile (17, 2) or buyer stall counter x=16..18, y=1)
+        if ((tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY()) ||
+            (tx >= 16 && tx <= 18 && ty == 1)) {
             m_shopUI.open(ShopMode::Sell);
             std::cout << "[Shop] Opened Buyer NPC shop at (" << tx << ", " << ty << ")." << std::endl;
             return;
@@ -529,4 +543,320 @@ void Game::render() {
 
     // Present final frame buffer
     m_renderer.present();
+}
+
+void Game::updatePlaytest(float dt) {
+    (void)dt;
+
+    if (m_playtestFrames == 5) {
+        // Step 0: Assert initial state
+        assert(m_timeSystem.getDay() == 1 && "Initial day must be 1");
+        assert(m_inventory.getMoney() == Config::INITIAL_MONEY && "Initial money must be 100G");
+        assert(m_player.getEnergy() == Config::INITIAL_ENERGY && "Initial energy must be 100");
+        assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == Config::INITIAL_TOMATO_SEEDS && "Initial tomato seeds must be 6");
+        assert(m_inventory.getItemCount(ItemType::WheatSeeds) == 0);
+        assert(m_inventory.getItemCount(ItemType::Tomato) == 0);
+        assert(m_inventory.getItemCount(ItemType::Wheat) == 0);
+        assert(m_inventory.getItemCount(ItemType::Salad) == 0);
+        assert(m_inventory.getItemCount(ItemType::Bread) == 0);
+        assert(m_farmSystem.getCropCount() == 0);
+        std::cout << "[PASS] Step 0: Initial state verified (Wallet: " << m_inventory.getMoney()
+                  << "G, Energy: " << m_player.getEnergy() << "/" << m_player.getMaxEnergy()
+                  << ", Day: " << m_timeSystem.getDay()
+                  << ", TomatoSeeds: " << m_inventory.getItemCount(ItemType::TomatoSeeds)
+                  << ", WheatSeeds: " << m_inventory.getItemCount(ItemType::WheatSeeds)
+                  << ", Crops: 0)" << std::endl;
+    } else if (m_playtestFrames == 15) {
+        // Step 1: Buy seeds from Seller NPC
+        m_player.setPosition(14.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        auto [tx, ty] = m_player.getTargetTile();
+        assert(tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY() && "Player should target Seller NPC");
+
+        m_shopUI.open(ShopMode::Buy);
+        assert(m_shopUI.isOpen() && m_shopUI.getMode() == ShopMode::Buy);
+
+        int buyTomatoPrice = m_shopSystem.getBuyPrice(ItemType::TomatoSeeds);
+        int buyWheatPrice = m_shopSystem.getBuyPrice(ItemType::WheatSeeds);
+        assert(buyTomatoPrice == 15 && "Tomato seeds buy price must be 15G per prices.txt");
+        assert(buyWheatPrice == 10 && "Wheat seeds buy price must be 10G per prices.txt");
+
+        // Purchase 1x Tomato Seeds and 4x Wheat Seeds
+        bool buy1 = m_shopSystem.buyItem(ItemType::TomatoSeeds, 1, m_inventory, &m_hud);
+        assert(buy1 && "Buying TomatoSeeds must succeed");
+        bool buy2 = m_shopSystem.buyItem(ItemType::WheatSeeds, 4, m_inventory, &m_hud);
+        assert(buy2 && "Buying 4x WheatSeeds must succeed");
+
+        m_shopUI.close();
+        assert(!m_shopUI.isOpen());
+
+        // Assert state: 100 - 15 - 40 = 45G
+        assert(m_inventory.getMoney() == 45);
+        assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == 7);
+        assert(m_inventory.getItemCount(ItemType::WheatSeeds) == 4);
+        assert(m_timeSystem.getDay() == 1);
+
+        std::cout << "[PASS] Step 1: Bought 1x TomatoSeeds (15G) and 4x WheatSeeds (40G) from Seller NPC (Wallet: "
+                  << m_inventory.getMoney() << "G, TomatoSeeds: " << m_inventory.getItemCount(ItemType::TomatoSeeds)
+                  << ", WheatSeeds: " << m_inventory.getItemCount(ItemType::WheatSeeds)
+                  << ", Crops: " << m_farmSystem.getCropCount()
+                  << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
+    } else if (m_playtestFrames == 25) {
+        // Step 2: Till plots and plant 3x Tomato and 4x Wheat
+        // Cultivate row y=5, x=5..11
+        // (6, 5) and (7, 5) are already TilledSoil; (5, 5), (8..11, 5) need tilling
+        for (int x : {5, 8, 9, 10, 11}) {
+            bool ok = m_farmSystem.till(x, 5, m_map, m_player, &m_hud);
+            assert(ok && "Tilling plot must succeed");
+            assert(m_map.getTile(x, 5).getType() == TileType::TilledSoil);
+        }
+
+        // Plant 3x TomatoSeeds at (5, 5), (6, 5), (7, 5)
+        for (int x : {5, 6, 7}) {
+            bool ok = m_farmSystem.plant(x, 5, m_map, m_inventory, m_player, &m_hud, ItemType::TomatoSeeds);
+            assert(ok && "Planting TomatoSeeds must succeed");
+        }
+
+        // Plant 4x WheatSeeds at (8, 5), (9, 5), (10, 5), (11, 5)
+        for (int x : {8, 9, 10, 11}) {
+            bool ok = m_farmSystem.plant(x, 5, m_map, m_inventory, m_player, &m_hud, ItemType::WheatSeeds);
+            assert(ok && "Planting WheatSeeds must succeed");
+        }
+
+        assert(m_farmSystem.getCropCount() == 7);
+        assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == 4);
+        assert(m_inventory.getItemCount(ItemType::WheatSeeds) == 0);
+        for (int x = 5; x <= 11; ++x) {
+            Crop* c = m_farmSystem.findCrop(x, 5);
+            assert(c != nullptr && c->getStage() == CropStage::Seed);
+        }
+        assert(m_inventory.getMoney() == 45);
+        assert(m_timeSystem.getDay() == 1);
+        assert(m_player.getEnergy() == 61); // 100 - 5*5 - 7*2 = 61
+
+        std::cout << "[PASS] Step 2: Tilled and planted 3x Tomato and 4x Wheat plots (Wallet: "
+                  << m_inventory.getMoney() << "G, TomatoSeeds: " << m_inventory.getItemCount(ItemType::TomatoSeeds)
+                  << ", WheatSeeds: " << m_inventory.getItemCount(ItemType::WheatSeeds)
+                  << ", Crops: 7 at Seed stage, Energy: " << m_player.getEnergy()
+                  << "/" << m_player.getMaxEnergy()
+                  << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
+    } else if (m_playtestFrames == 35) {
+        // Step 3: Verify Watering Growth Boost on Plot (5, 5)
+        bool waterOk = m_farmSystem.water(5, 5, m_map, m_player, &m_hud);
+        assert(waterOk && "Watering plot (5, 5) must succeed");
+        assert(m_map.getTile(5, 5).getType() == TileType::WateredSoil);
+        assert(m_map.getTile(6, 5).getType() == TileType::TilledSoil && "Plot (6, 5) must stay unwatered for comparison");
+
+        // Advance daytime simulation time by 3.0s
+        m_farmSystem.update(3.0f, m_map);
+
+        Crop* wateredCrop = m_farmSystem.findCrop(5, 5);
+        Crop* unwateredCrop = m_farmSystem.findCrop(6, 5);
+        assert(wateredCrop != nullptr && unwateredCrop != nullptr);
+        assert(wateredCrop->getStage() == CropStage::Sprout && "Watered plot (5, 5) must advance to Sprout due to 2.5x growth boost");
+        assert(unwateredCrop->getStage() == CropStage::Seed && "Unwatered plot (6, 5) must remain at Seed stage");
+        assert(m_player.getEnergy() == 58); // 61 - 3 = 58
+        assert(m_timeSystem.getDay() == 1);
+
+        std::cout << "[PASS] Step 3: Watering growth boost verified: Watered plot (5, 5) advanced to Sprout (2.5x boost) while unwatered plot (6, 5) remained Seed (Wallet: "
+                  << m_inventory.getMoney() << "G, Energy: " << m_player.getEnergy()
+                  << "/" << m_player.getMaxEnergy() << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
+    } else if (m_playtestFrames == 45) {
+        // Step 4: Water remaining plots and sleep overnight to Day 2
+        for (int x = 6; x <= 11; ++x) {
+            bool ok = m_farmSystem.water(x, 5, m_map, m_player, &m_hud);
+            assert(ok && "Watering remaining plots must succeed");
+        }
+        assert(m_player.getEnergy() == 40); // 58 - 6*3 = 40
+
+        m_player.setPosition(2.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        auto [tx, ty] = m_player.getTargetTile();
+        assert(TimeSystem::isBedTile(tx, ty) && "Player should target farmhouse entrance/bed tile (2, 2)");
+
+        // Sleep overnight
+        m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+
+        assert(m_timeSystem.getDay() == 2 && "Day must advance to 2");
+        assert(m_player.getEnergy() == Config::INITIAL_ENERGY && "Energy must be fully restored to 100");
+        assert(m_farmSystem.findCrop(5, 5)->getStage() == CropStage::Growing && "Crop at (5, 5) advances to Growing");
+        for (int x = 6; x <= 11; ++x) {
+            assert(m_farmSystem.findCrop(x, 5)->getStage() == CropStage::Sprout && "Crops at (6..11, 5) advance to Sprout");
+            assert(m_map.getTile(x, 5).getType() == TileType::TilledSoil && "Watered soil must dry to TilledSoil overnight");
+        }
+        assert(m_map.getTile(5, 5).getType() == TileType::TilledSoil);
+
+        std::cout << "[PASS] Step 4: Slept overnight to Day 2: Day counter=2, Energy restored to 100, Crops grew, Soil dried to TilledSoil (Wallet: "
+                  << m_inventory.getMoney() << "G, Day: " << m_timeSystem.getDay()
+                  << ", Energy: " << m_player.getEnergy() << "/" << m_player.getMaxEnergy() << ")" << std::endl;
+    } else if (m_playtestFrames == 55) {
+        // Step 5: Day 2 care and advancing days until crops mature (Day 3 & Day 4)
+        // Water on Day 2
+        for (int x = 5; x <= 11; ++x) {
+            m_farmSystem.water(x, 5, m_map, m_player, &m_hud);
+        }
+        // Sleep to Day 3
+        m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+        assert(m_timeSystem.getDay() == 3);
+        assert(m_player.getEnergy() == Config::INITIAL_ENERGY);
+        assert(m_farmSystem.findCrop(5, 5)->getStage() == CropStage::Harvest && "Crop (5, 5) is mature at Day 3");
+
+        // Water on Day 3 and sleep to Day 4
+        for (int x = 5; x <= 11; ++x) {
+            m_farmSystem.water(x, 5, m_map, m_player, &m_hud);
+        }
+        m_timeSystem.sleep(m_player, m_farmSystem, m_map, &m_hud);
+        assert(m_timeSystem.getDay() == 4);
+        assert(m_player.getEnergy() == Config::INITIAL_ENERGY);
+
+        // All 7 crops are now mature (Harvest stage)
+        int matureCount = 0;
+        for (int x = 5; x <= 11; ++x) {
+            Crop* c = m_farmSystem.findCrop(x, 5);
+            assert(c != nullptr);
+            assert(c->isMature() && c->getStage() == CropStage::Harvest);
+            matureCount++;
+        }
+        assert(matureCount == 7);
+        assert(m_inventory.getMoney() == 45);
+
+        std::cout << "[PASS] Step 5: Advanced days to crop maturity: Day=4, All 7 crops (3 Tomato, 4 Wheat) reached Harvest stage (Wallet: "
+                  << m_inventory.getMoney() << "G, Day: " << m_timeSystem.getDay()
+                  << ", Energy: " << m_player.getEnergy() << "/" << m_player.getMaxEnergy()
+                  << ", Crops mature: 7/7)" << std::endl;
+    } else if (m_playtestFrames == 65) {
+        // Step 6: Harvest all mature crops
+        for (int x = 5; x <= 11; ++x) {
+            bool ok = m_farmSystem.harvest(x, 5, m_map, m_inventory, m_player, &m_hud);
+            assert(ok && "Harvesting mature crop must succeed");
+        }
+        assert(m_farmSystem.getCropCount() == 0 && "All crops harvested from field");
+        assert(m_inventory.getItemCount(ItemType::Tomato) == 3 && "Harvested 3x Tomato");
+        assert(m_inventory.getItemCount(ItemType::Wheat) == 4 && "Harvested 4x Wheat");
+        assert(m_player.getEnergy() == 100 - 7 * Config::ENERGY_COST_HARVEST); // 100 - 28 = 72
+        assert(m_inventory.getMoney() == 45);
+        assert(m_timeSystem.getDay() == 4);
+
+        std::cout << "[PASS] Step 6: Harvested 3x Tomato and 4x Wheat (Wallet: "
+                  << m_inventory.getMoney() << "G, Tomatoes: " << m_inventory.getItemCount(ItemType::Tomato)
+                  << ", Wheat: " << m_inventory.getItemCount(ItemType::Wheat)
+                  << ", Crops on field: " << m_farmSystem.getCropCount()
+                  << ", Energy: " << m_player.getEnergy() << "/" << m_player.getMaxEnergy()
+                  << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
+    } else if (m_playtestFrames == 75) {
+        // Step 7: Cook Salad and Bread at the stove
+        m_player.setPosition(4.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        auto [tx, ty] = m_player.getTargetTile();
+        assert(tx == 4 && ty == 2 && "Player should target stove at (4, 2)");
+        assert(m_map.getTile(tx, ty).getType() == TileType::Stove);
+
+        m_cookingUI.open();
+        assert(m_cookingUI.isOpen());
+
+        // Cook Salad (consumes 2x Tomato, adds 1x Salad)
+        bool saladOk = m_cookingSystem.cook(ItemType::Salad, m_inventory, &m_hud);
+        assert(saladOk && "Cooking Salad must succeed with 2 tomatoes");
+        assert(m_inventory.getItemCount(ItemType::Tomato) == 1 && "1 surplus tomato should remain");
+        assert(m_inventory.getItemCount(ItemType::Salad) == 1);
+
+        // Cook Bread (consumes 3x Wheat, adds 1x Bread)
+        bool breadOk = m_cookingSystem.cook(ItemType::Bread, m_inventory, &m_hud);
+        assert(breadOk && "Cooking Bread must succeed with 3 wheat");
+        assert(m_inventory.getItemCount(ItemType::Wheat) == 1 && "1 surplus wheat should remain");
+        assert(m_inventory.getItemCount(ItemType::Bread) == 1);
+
+        m_cookingUI.close();
+        assert(!m_cookingUI.isOpen());
+
+        assert(m_inventory.getMoney() == 45);
+        assert(m_timeSystem.getDay() == 4);
+
+        std::cout << "[PASS] Step 7: Cooked 1x Salad (consumed 2x Tomato) and 1x Bread (consumed 3x Wheat) at Stove (Wallet: "
+                  << m_inventory.getMoney() << "G, Salad: " << m_inventory.getItemCount(ItemType::Salad)
+                  << ", Bread: " << m_inventory.getItemCount(ItemType::Bread)
+                  << ", Surplus Tomato: " << m_inventory.getItemCount(ItemType::Tomato)
+                  << ", Surplus Wheat: " << m_inventory.getItemCount(ItemType::Wheat)
+                  << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
+    } else if (m_playtestFrames == 85) {
+        // Step 8: Sell dishes and surplus produce to Buyer NPC
+        m_player.setPosition(17.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        auto [tx, ty] = m_player.getTargetTile();
+        assert(tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY() && "Player should target Buyer NPC");
+
+        m_shopUI.open(ShopMode::Sell);
+        assert(m_shopUI.isOpen() && m_shopUI.getMode() == ShopMode::Sell);
+
+        // Verify sell prices per prices.txt
+        assert(m_shopSystem.getSellPrice(ItemType::Salad) == 40 && "Salad sell price must be 40G per prices.txt");
+        assert(m_shopSystem.getSellPrice(ItemType::Bread) == 50 && "Bread sell price must be 50G per prices.txt");
+        assert(m_shopSystem.getSellPrice(ItemType::Tomato) == 20 && "Tomato sell price must be 20G per prices.txt");
+        assert(m_shopSystem.getSellPrice(ItemType::Wheat) == 14 && "Wheat sell price must be 14G per prices.txt");
+
+        // Sell 1x Salad: 45 + 40 = 85G
+        bool s1 = m_shopSystem.sellItem(ItemType::Salad, 1, m_inventory, &m_hud);
+        assert(s1 && m_inventory.getMoney() == 85 && m_inventory.getItemCount(ItemType::Salad) == 0);
+
+        // Sell 1x Bread: 85 + 50 = 135G
+        bool s2 = m_shopSystem.sellItem(ItemType::Bread, 1, m_inventory, &m_hud);
+        assert(s2 && m_inventory.getMoney() == 135 && m_inventory.getItemCount(ItemType::Bread) == 0);
+
+        // Sell 1x surplus Tomato: 135 + 20 = 155G
+        bool s3 = m_shopSystem.sellItem(ItemType::Tomato, 1, m_inventory, &m_hud);
+        assert(s3 && m_inventory.getMoney() == 155 && m_inventory.getItemCount(ItemType::Tomato) == 0);
+
+        // Sell 1x surplus Wheat: 155 + 14 = 169G
+        bool s4 = m_shopSystem.sellItem(ItemType::Wheat, 1, m_inventory, &m_hud);
+        assert(s4 && m_inventory.getMoney() == 169 && m_inventory.getItemCount(ItemType::Wheat) == 0);
+
+        m_shopUI.close();
+        assert(!m_shopUI.isOpen());
+        assert(m_timeSystem.getDay() == 4);
+
+        std::cout << "[PASS] Step 8: Sold 1x Salad (+40G), 1x Bread (+50G), 1x Tomato (+20G), 1x Wheat (+14G) to Buyer NPC (Wallet: "
+                  << m_inventory.getMoney() << "G, Salad: 0, Bread: 0, Tomato: 0, Wheat: 0, Day: "
+                  << m_timeSystem.getDay() << ")" << std::endl;
+    } else if (m_playtestFrames == 95) {
+        // Step 9: Buy more seeds with the profit from Seller NPC
+        m_player.setPosition(14.0f * Map::TILE_SIZE, 3.0f * Map::TILE_SIZE);
+        m_player.setFacing(Direction::Up);
+        auto [tx, ty] = m_player.getTargetTile();
+        assert(tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY());
+
+        m_shopUI.open(ShopMode::Buy);
+        assert(m_shopUI.isOpen() && m_shopUI.getMode() == ShopMode::Buy);
+
+        // Buy 2x TomatoSeeds (-30G), 3x WheatSeeds (-30G), 1x CarrotSeeds (-20G). Total: -80G.
+        // Wallet: 169 - 80 = 89G
+        int tomatoSeedsBefore = m_inventory.getItemCount(ItemType::TomatoSeeds); // was 4
+        int wheatSeedsBefore = m_inventory.getItemCount(ItemType::WheatSeeds);   // was 0
+        int carrotSeedsBefore = m_inventory.getItemCount(ItemType::CarrotSeeds); // was 0
+
+        bool b1 = m_shopSystem.buyItem(ItemType::TomatoSeeds, 2, m_inventory, &m_hud);
+        assert(b1);
+        bool b2 = m_shopSystem.buyItem(ItemType::WheatSeeds, 3, m_inventory, &m_hud);
+        assert(b2);
+        bool b3 = m_shopSystem.buyItem(ItemType::CarrotSeeds, 1, m_inventory, &m_hud);
+        assert(b3);
+
+        m_shopUI.close();
+        assert(!m_shopUI.isOpen());
+
+        assert(m_inventory.getMoney() == 89);
+        assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == tomatoSeedsBefore + 2); // 6
+        assert(m_inventory.getItemCount(ItemType::WheatSeeds) == wheatSeedsBefore + 3);   // 3
+        assert(m_inventory.getItemCount(ItemType::CarrotSeeds) == carrotSeedsBefore + 1); // 1
+        assert(m_timeSystem.getDay() == 4);
+
+        std::cout << "[PASS] Step 9: Reinvested profit: Bought 2x TomatoSeeds (-30G), 3x WheatSeeds (-30G), 1x CarrotSeeds (-20G) (Wallet: "
+                  << m_inventory.getMoney() << "G, TomatoSeeds: " << m_inventory.getItemCount(ItemType::TomatoSeeds)
+                  << ", WheatSeeds: " << m_inventory.getItemCount(ItemType::WheatSeeds)
+                  << ", CarrotSeeds: " << m_inventory.getItemCount(ItemType::CarrotSeeds)
+                  << ", Day: " << m_timeSystem.getDay() << ")" << std::endl;
+    } else if (m_playtestFrames >= 105) {
+        std::cout << "[PASS] Full playthrough playtest completed successfully across "
+                  << m_timeSystem.getDay() << " in-game days!" << std::endl;
+        m_isRunning = false;
+    }
 }

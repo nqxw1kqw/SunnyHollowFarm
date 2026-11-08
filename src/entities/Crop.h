@@ -25,7 +25,9 @@ public:
 
     ItemType getCropType() const { return m_cropType; }
     ItemType getHarvestItem() const {
-        return (m_cropType == ItemType::Wheat || m_cropType == ItemType::WheatSeeds) ? ItemType::Wheat : ItemType::Tomato;
+        if (m_cropType == ItemType::Wheat || m_cropType == ItemType::WheatSeeds) return ItemType::Wheat;
+        if (m_cropType == ItemType::Carrot || m_cropType == ItemType::CarrotSeeds) return ItemType::Carrot;
+        return ItemType::Tomato;
     }
 
     CropStage getStage() const { return m_stage; }

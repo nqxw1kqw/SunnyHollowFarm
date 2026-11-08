@@ -171,6 +171,21 @@ bool CookingSystem::cook(int recipeIndex, Inventory& inventory, HUD* hud) {
         return false;
     }
 
+    bool willFreeSlot = false;
+    for (const auto& ing : r->ingredients) {
+        if (inventory.getItemCount(ing.item) == ing.count) {
+            willFreeSlot = true;
+            break;
+        }
+    }
+    if (!inventory.hasSpaceFor(r->result, 1) && !willFreeSlot) {
+        std::cout << "[CookingSystem] Cannot cook " << r->dishName << ": Inventory full!" << std::endl;
+        if (hud) {
+            hud->showFeedback("INVENTORY FULL!");
+        }
+        return false;
+    }
+
     // Deduct ingredients
     for (const auto& ing : r->ingredients) {
         inventory.removeItem(ing.item, ing.count);

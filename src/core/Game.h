@@ -25,7 +25,7 @@ public:
     ~Game();
 
     // Initializes SDL, window, renderer, and subsystems.
-    bool init(const char* title, int width, int height, bool smokeTestMode = false);
+    bool init(const char* title, int width, int height, bool smokeTestMode = false, bool playtestMode = false);
 
     // Runs the main fixed-timestep game loop until quit is requested.
     void run();
@@ -58,6 +58,7 @@ public:
 private:
     void handleInput();
     void update(float dt);
+    void updatePlaytest(float dt);
     void render();
 
     SDL_Window* m_window = nullptr;
@@ -83,4 +84,6 @@ private:
     bool m_isRunning = false;
     bool m_smokeTestMode = false;
     int m_smokeTestFrames = 0;
+    bool m_playtestMode = false;
+    int m_playtestFrames = 0;
 };

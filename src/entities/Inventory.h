@@ -43,6 +43,7 @@ public:
     }
 
     // Item management operations
+    bool hasSpaceFor(ItemType type, int count = 1) const;
     bool addItem(ItemType type, int count = 1);
     bool removeItem(ItemType type, int count = 1);
     int getItemCount(ItemType type) const;

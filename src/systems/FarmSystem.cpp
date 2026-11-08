@@ -113,7 +113,12 @@ bool FarmSystem::plant(int tileX, int tileY, Map& map, Inventory& inventory, Pla
         return false;
     }
 
-    ItemType cropProduce = (seedType == ItemType::WheatSeeds) ? ItemType::Wheat : ItemType::Tomato;
+    ItemType cropProduce = ItemType::Tomato;
+    if (seedType == ItemType::WheatSeeds || seedType == ItemType::Wheat) {
+        cropProduce = ItemType::Wheat;
+    } else if (seedType == ItemType::CarrotSeeds || seedType == ItemType::Carrot) {
+        cropProduce = ItemType::Carrot;
+    }
     m_crops.emplace_back(tileX, tileY, cropProduce);
     inventory.removeItem(seedType, 1);
     player.consumeEnergy(Config::ENERGY_COST_PLANT);
@@ -145,6 +150,14 @@ bool FarmSystem::harvest(int tileX, int tileY, Map& map, Inventory& inventory, P
     }
 
     ItemType harvestItem = it->getHarvestItem();
+    if (!inventory.hasSpaceFor(harvestItem, 1)) {
+        if (hud) {
+            hud->showFeedback("INVENTORY FULL!");
+        }
+        std::cout << "[Farm] Action refused: Cannot harvest, inventory is full!" << std::endl;
+        return false;
+    }
+
     m_crops.erase(it);
     inventory.addItem(harvestItem, 1);
     player.consumeEnergy(Config::ENERGY_COST_HARVEST);
