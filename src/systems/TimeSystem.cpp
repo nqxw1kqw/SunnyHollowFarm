@@ -25,4 +25,9 @@ void TimeSystem::sleep(Player& player, FarmSystem& farmSystem, Map& map, HUD* hu
         std::string msg = "DAY " + std::to_string(m_day) + " - FULLY RESTED!";
         hud->showFeedback(msg, 2.5f);
     }
+
+    // 4. Invoke auto-save whenever the player sleeps
+    if (m_onSleepCallback) {
+        m_onSleepCallback();
+    }
 }

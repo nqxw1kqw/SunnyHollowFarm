@@ -5,6 +5,7 @@
 #include "world/Map.h"
 #include "ui/HUD.h"
 #include <string>
+#include <functional>
 
 // Manages the in-game calendar day counter, sleeping mechanics, and overnight simulation.
 class TimeSystem {
@@ -13,6 +14,8 @@ public:
 
     int getDay() const { return m_day; }
     void setDay(int day) { m_day = std::max(1, day); }
+
+    void setOnSleepCallback(std::function<void()> callback) { m_onSleepCallback = callback; }
 
     // Advances the day cycle through sleep:
     // 1. Day counter increments.
@@ -27,4 +30,5 @@ public:
 
 private:
     int m_day = 1;
+    std::function<void()> m_onSleepCallback = nullptr;
 };

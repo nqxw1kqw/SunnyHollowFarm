@@ -19,6 +19,8 @@ public:
     static constexpr float TIME_PER_STAGE = 6.0f;
 
     Crop(int tileX, int tileY, ItemType cropType = ItemType::Tomato);
+    Crop(int tileX, int tileY, ItemType cropType, CropStage stage, float stageTimer = 0.0f)
+        : m_tileX(tileX), m_tileY(tileY), m_cropType(cropType), m_stage(stage), m_stageTimer(stageTimer) {}
 
     int getTileX() const { return m_tileX; }
     int getTileY() const { return m_tileY; }
@@ -31,6 +33,9 @@ public:
     }
 
     CropStage getStage() const { return m_stage; }
+    float getStageTimer() const { return m_stageTimer; }
+    void setStage(CropStage stage) { m_stage = stage; }
+    void setStageTimer(float timer) { m_stageTimer = timer; }
     bool isMature() const { return m_stage == CropStage::Harvest; }
 
     // Advances the crop stage directly (e.g. overnight sleep growth in Milestone 6)

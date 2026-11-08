@@ -32,6 +32,7 @@ set(SOURCES
     src/systems/ShopSystem.cpp
     src/ui/ShopUI.cpp
     src/systems/TimeSystem.cpp
+    src/systems/SaveSystem.cpp
 )
 
 add_executable(sunny_hollow_farm ${SOURCES})

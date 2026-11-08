@@ -75,11 +75,20 @@ public:
 
     Location getLocation() const { return m_location; }
     void setLocation(Location loc) { m_location = loc; }
+    const Map& getMap() const { return m_map; }
+    Map& getMap() { return m_map; }
     const Map& getInteriorMap() const { return m_interiorMap; }
     Map& getInteriorMap() { return m_interiorMap; }
     const Map& getCurrentMap() const { return (m_location == Location::Farm) ? m_map : m_interiorMap; }
     Map& getCurrentMap() { return (m_location == Location::Farm) ? m_map : m_interiorMap; }
+    const FarmSystem& getFarmSystem() const { return m_farmSystem; }
+    FarmSystem& getFarmSystem() { return m_farmSystem; }
     void transitionTo(Location loc);
+
+    // Save / Load and In-Game Reset (Part C)
+    bool saveGame(const std::string& filepath = "savegame.json") const;
+    bool loadGame(const std::string& filepath = "savegame.json");
+    void resetGame();
 
     // Screen transition fade state machine (~300 ms out + 300 ms in)
     static constexpr float FADE_OUT_DURATION = 0.3f;

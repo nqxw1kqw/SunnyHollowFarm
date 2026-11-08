@@ -1,5 +1,6 @@
 #include "core/Game.h"
 #include "ui/BitmapFont.h"
+#include "systems/SaveSystem.h"
 #include <iostream>
 #include <cassert>
 #include <cmath>
@@ -106,6 +107,22 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
     // Initialize farmhouse interior room map
     m_interiorMap.initInterior();
 
+    // Wire auto-save whenever player sleeps (Milestone 6 / Part C)
+    m_timeSystem.setOnSleepCallback([this]() {
+        saveGame();
+    });
+
+    // On launch, load the save if one exists; otherwise start the standard new game.
+    if (!m_smokeTestMode && !m_playtestMode) {
+        if (SaveSystem::exists()) {
+            if (loadGame()) {
+                std::cout << "[SaveSystem] Loaded existing savegame.json on launch." << std::endl;
+            } else {
+                std::cout << "[SaveSystem] Failed to load existing savegame.json; starting fresh standard new game." << std::endl;
+            }
+        }
+    }
+
     m_isRunning = true;
     std::cout << "Sunny Hollow Farm initialized successfully (" << width << "x" << height << ")" << std::endl;
     if (m_smokeTestMode) {
@@ -125,6 +142,12 @@ void Game::cleanUp() {
     if (m_window) {
         SDL_DestroyWindow(m_window);
         m_window = nullptr;
+    }
+
+    // Clean up temporary test save files if smoke test or playtest ran
+    if (m_smokeTestMode || m_playtestMode) {
+        SaveSystem::removeSave("smoke_save.json");
+        SaveSystem::removeSave("savegame.json");
     }
 
     SDL_Quit();
@@ -150,7 +173,7 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 152) {
+                if (m_smokeTestFrames >= 153) {
                     std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
@@ -244,9 +267,39 @@ void Game::fastForwardTransition() {
     }
 }
 
+bool Game::saveGame(const std::string& filepath) const {
+    return SaveSystem::save(*this, filepath);
+}
+
+bool Game::loadGame(const std::string& filepath) {
+    return SaveSystem::load(*this, filepath);
+}
+
+void Game::resetGame() {
+    SaveSystem::removeSave();
+    m_timeSystem.setDay(1);
+    m_inventory = Inventory();
+    m_player = Player();
+    m_location = Location::Farm;
+    m_map.initDefault();
+    m_interiorMap.initInterior();
+    m_farmSystem.clearCrops();
+    m_fadePhase = FadePhase::None;
+    m_transitionAction = TransitionAction::None;
+    m_fadeTimer = 0.0f;
+    m_hud.showFeedback("RESET TO FRESH DAY 1", 3.0f);
+    std::cout << "[Reset] F9 pressed: deleted save file and restarted at fresh Day 1." << std::endl;
+}
+
 void Game::handleInput() {
     // Input is locked during screen transition fades
     if (isInputLocked()) {
+        return;
+    }
+
+    // In-game reset key [F9]: deletes save and restarts at fresh Day 1
+    if (m_input.isKeyPressed(SDL_SCANCODE_F9)) {
+        resetGame();
         return;
     }
 
@@ -843,6 +896,96 @@ void Game::update(float dt) {
             transitionTo(Location::Farm);
 
             std::cout << "[Smoke Test] Screen transitions verified: fade phases progress in order (None -> FadeOut -> Midpoint -> FadeIn -> None), input locks, and sleeping through fade advances day exactly once!" << std::endl;
+        } else if (m_smokeTestFrames == 151) {
+            // PART C Save / load verification:
+            // 1. Verify standard new-game state on no-save boot
+            assert(!SaveSystem::exists("non_existent_save_file.json"));
+
+            // 2. Set up distinctive known state to save
+            const std::string testSaveFile = "smoke_save.json";
+            m_timeSystem.setDay(6);
+            m_inventory.setMoney(375);
+            m_player.setEnergy(82);
+            m_player.setPosition(128.0f, 160.0f);
+            m_player.setFacing(Direction::Right);
+            m_location = Location::Farm;
+            m_inventory.activeTool = ToolType::WateringCan;
+            m_inventory.getSlots().clear();
+            m_inventory.getSlots().push_back(InventorySlot{ItemType::Tomato, 4});
+            m_inventory.getSlots().push_back(InventorySlot{ItemType::Bread, 2});
+            m_inventory.getSlots().push_back(InventorySlot{ItemType::WheatSeeds, 5});
+            while (m_inventory.getSlots().size() < static_cast<size_t>(Config::INVENTORY_SLOT_COUNT)) {
+                m_inventory.getSlots().push_back(InventorySlot{ItemType::Empty, 0});
+            }
+
+            // Set up a crop plot at (8, 6)
+            m_map.setTileType(8, 6, TileType::WateredSoil);
+            m_farmSystem.clearCrops();
+            m_farmSystem.addCrop(Crop(8, 6, ItemType::Wheat, CropStage::Growing, 2.5f));
+
+            // Save state
+            bool saved = saveGame(testSaveFile);
+            assert(saved && "SaveSystem::save must succeed");
+            assert(SaveSystem::exists(testSaveFile) && "Saved file must exist on disk");
+
+            // 3. Scramble the state completely
+            m_timeSystem.setDay(99);
+            m_inventory.setMoney(0);
+            m_player.setEnergy(5);
+            m_player.setPosition(0.0f, 0.0f);
+            m_player.setFacing(Direction::Up);
+            m_location = Location::FarmhouseInterior;
+            m_inventory.activeTool = ToolType::Hoe;
+            m_inventory.getSlots().clear();
+            m_inventory.getSlots().resize(Config::INVENTORY_SLOT_COUNT);
+            m_map.setTileType(8, 6, TileType::Dirt);
+            m_farmSystem.clearCrops();
+
+            // Verify state is indeed scrambled
+            assert(m_timeSystem.getDay() == 99);
+            assert(m_inventory.getMoney() == 0);
+            assert(m_player.getEnergy() == 5);
+            assert(m_farmSystem.getCropCount() == 0);
+
+            // 4. Load state from save
+            bool loaded = loadGame(testSaveFile);
+            assert(loaded && "SaveSystem::load must succeed");
+
+            // 5. Assert day, wallet, inventory, and at least one crop plot are restored exactly
+            assert(m_timeSystem.getDay() == 6 && "Day must be restored to 6");
+            assert(m_inventory.getMoney() == 375 && "Wallet must be restored to 375G");
+            assert(m_player.getEnergy() == 82 && "Energy must be restored to 82");
+            assert(m_player.getX() == 128.0f && m_player.getY() == 160.0f && "Player position must be restored");
+            assert(m_player.getFacing() == Direction::Right && "Facing must be restored to Right");
+            assert(m_location == Location::Farm && "Location must be restored to Farm");
+            assert(m_inventory.activeTool == ToolType::WateringCan && "Active tool must be restored to WateringCan");
+            assert(m_inventory.getItemCount(ItemType::Tomato) == 4 && "Tomato count must be 4");
+            assert(m_inventory.getItemCount(ItemType::Bread) == 2 && "Bread count must be 2");
+            assert(m_inventory.getItemCount(ItemType::WheatSeeds) == 5 && "WheatSeeds count must be 5");
+
+            // Assert crop plot at (8, 6) is restored exactly
+            Crop* loadedCrop = m_farmSystem.findCrop(8, 6);
+            assert(loadedCrop != nullptr && "Crop at (8, 6) must be restored");
+            assert(loadedCrop->getCropType() == ItemType::Wheat && "Crop type must be Wheat");
+            assert(loadedCrop->getStage() == CropStage::Growing && "Crop stage must be Growing");
+            assert(m_map.getTile(8, 6).getType() == TileType::WateredSoil && "Soil state must be WateredSoil");
+            assert(m_map.getTile(8, 6).isWatered() && "Watered flag must be true");
+
+            // Clean up test save file
+            SaveSystem::removeSave(testSaveFile);
+            assert(!SaveSystem::exists(testSaveFile) && "Test save file must be deleted");
+
+            // Also test F9 in-game reset behavior
+            saveGame(testSaveFile);
+            assert(SaveSystem::exists(testSaveFile));
+            SaveSystem::removeSave(testSaveFile);
+            resetGame();
+            assert(m_timeSystem.getDay() == 1 && "F9 Reset must return to Day 1");
+            assert(m_inventory.getMoney() == Config::INITIAL_MONEY && "F9 Reset must restore initial money");
+            assert(m_player.getEnergy() == Config::INITIAL_ENERGY && "F9 Reset must restore initial energy");
+            assert(m_inventory.getItemCount(ItemType::TomatoSeeds) == Config::INITIAL_TOMATO_SEEDS);
+
+            std::cout << "[Smoke Test] Save / Load verified: save -> scramble -> load restored day (6), wallet (375G), inventory (4 Tomato, 2 Bread, 5 WheatSeeds), crop plot (8, 6 Wheat Growing on WateredSoil), and F9 reset verified!" << std::endl;
         }
     }
 }

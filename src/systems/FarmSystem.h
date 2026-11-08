@@ -47,6 +47,8 @@ public:
     size_t getCropCount() const { return m_crops.size(); }
     const std::vector<Crop>& getCrops() const { return m_crops; }
     std::vector<Crop>& getCrops() { return m_crops; }
+    void clearCrops() { m_crops.clear(); }
+    void addCrop(const Crop& crop) { m_crops.push_back(crop); }
 
 private:
     std::vector<Crop> m_crops;
