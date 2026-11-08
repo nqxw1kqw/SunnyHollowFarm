@@ -42,10 +42,13 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode) {
         std::cerr << "AssetManager initialization warning." << std::endl;
     }
 
+    // Initialize cooking recipes from assets/data/recipes.txt
+    m_cookingSystem.loadRecipes("assets/data/recipes.txt");
+
     m_isRunning = true;
     std::cout << "Sunny Hollow Farm initialized successfully (" << width << "x" << height << ")" << std::endl;
     if (m_smokeTestMode) {
-        std::cout << "[Smoke Test Mode active: running 120 fixed ticks then cleanly exiting]" << std::endl;
+        std::cout << "[Smoke Test Mode active: running test sequence then cleanly exiting]" << std::endl;
     }
 
     return true;
@@ -83,8 +86,8 @@ void Game::run() {
 
             if (m_smokeTestMode) {
                 m_smokeTestFrames++;
-                if (m_smokeTestFrames >= 120) {
-                    std::cout << "[Smoke Test Completed: 120 ticks passed successfully]" << std::endl;
+                if (m_smokeTestFrames >= 135) {
+                    std::cout << "[Smoke Test Completed: all ticks passed successfully]" << std::endl;
                     m_isRunning = false;
                     break;
                 }
@@ -113,7 +116,13 @@ void Game::handleInput() {
         return;
     }
 
-    // Tool hotbar selection keys [1], [2], [3]
+    // When the cooking UI modal is open, pass input to it and pause world interaction
+    if (m_cookingUI.isOpen()) {
+        m_cookingUI.handleInput(m_input, m_inventory, m_cookingSystem, &m_hud);
+        return;
+    }
+
+    // Tool hotbar selection keys [1], [2], [3], [4]
     if (m_input.isKeyPressed(SDL_SCANCODE_1)) {
         m_inventory.activeTool = ToolType::Hoe;
         std::cout << "[Tool Selected] Hoe" << std::endl;
@@ -124,13 +133,27 @@ void Game::handleInput() {
         m_inventory.activeTool = ToolType::TomatoSeeds;
         std::cout << "[Tool Selected] Tomato Seeds (Stock: "
                   << m_inventory.getItemCount(ItemType::TomatoSeeds) << ")" << std::endl;
+    } else if (m_input.isKeyPressed(SDL_SCANCODE_4)) {
+        m_inventory.activeTool = ToolType::WheatSeeds;
+        std::cout << "[Tool Selected] Wheat Seeds (Stock: "
+                  << m_inventory.getItemCount(ItemType::WheatSeeds) << ")" << std::endl;
     }
 
-    // Use active tool on the targeted tile (Space, E, or Return)
+    // Action key (Space, E, Return, or C)
     if (m_input.isKeyPressed(SDL_SCANCODE_SPACE) ||
         m_input.isKeyPressed(SDL_SCANCODE_E) ||
-        m_input.isKeyPressed(SDL_SCANCODE_RETURN)) {
+        m_input.isKeyPressed(SDL_SCANCODE_RETURN) ||
+        m_input.isKeyPressed(SDL_SCANCODE_C)) {
         auto [tx, ty] = m_player.getTargetTile();
+
+        // 1. Stove kitchen interaction point check
+        if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Stove) {
+            m_cookingUI.open();
+            std::cout << "[Stove] Opened cooking interface at (" << tx << ", " << ty << ")." << std::endl;
+            return;
+        }
+
+        // 2. Farming interaction
         m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud);
     }
 }
@@ -139,8 +162,8 @@ void Game::update(float dt) {
     // Update on-screen feedback timer
     m_hud.update(dt);
 
-    // Player movements and world physics only progress if inventory modal is closed
-    if (!m_inventoryUI.isOpen()) {
+    // Player movements and world physics only progress if modals are closed
+    if (!m_inventoryUI.isOpen() && !m_cookingUI.isOpen()) {
         m_player.update(dt, m_input, m_map);
     }
     m_farmSystem.update(dt, m_map);
@@ -221,6 +244,53 @@ void Game::update(float dt) {
             m_inventoryUI.toggle();
             assert(!m_inventoryUI.isOpen() && "Inventory UI should be closed after second toggle");
             std::cout << "[Smoke Test] Inventory UI toggle verified!" << std::endl;
+        } else if (m_smokeTestFrames == 120) {
+            // Milestone 4: Verify recipe parsing and missing ingredients refusal
+            assert(m_cookingSystem.getRecipeCount() >= 2 && "At least Salad and Bread recipes must be loaded");
+            assert(m_cookingSystem.findRecipeByDish(ItemType::Salad) != nullptr);
+            assert(m_cookingSystem.findRecipeByDish(ItemType::Bread) != nullptr);
+
+            // Attempt to cook Salad when only 1 tomato is available (Salad recipe requires 2)
+            assert(m_inventory.getItemCount(ItemType::Tomato) == 1);
+            assert(m_inventory.getItemCount(ItemType::Salad) == 0);
+            bool cookFail = m_cookingSystem.cook(ItemType::Salad, m_inventory, &m_hud);
+            assert(!cookFail && "Cooking Salad must fail when ingredients are missing");
+            assert(m_inventory.getItemCount(ItemType::Tomato) == 1 && "Ingredients must not be consumed on failure");
+            assert(m_inventory.getItemCount(ItemType::Salad) == 0);
+            assert(m_hud.hasActiveFeedback() && "HUD must show missing ingredient feedback");
+            std::cout << "[Smoke Test] Missing ingredients refusal verified: Salad requires 2 tomatoes (have 1) -> refused with feedback!" << std::endl;
+
+            // Fulfill recipe with 2nd tomato and cook
+            m_inventory.addItem(ItemType::Tomato, 1);
+            assert(m_inventory.getItemCount(ItemType::Tomato) == 2);
+            bool cookOk = m_cookingSystem.cook(ItemType::Salad, m_inventory, &m_hud);
+            assert(cookOk && "Cooking Salad must succeed with required ingredients");
+            assert(m_inventory.getItemCount(ItemType::Tomato) == 0 && "Tomatoes must be consumed");
+            assert(m_inventory.getItemCount(ItemType::Salad) == 1 && "Salad dish must be added to inventory");
+            std::cout << "[Smoke Test] Cooking Salad verified: 2x Tomato consumed -> 1x Salad added to inventory!" << std::endl;
+        } else if (m_smokeTestFrames == 125) {
+            // Milestone 4: Verify Bread cooking and stove interaction point
+            assert(m_inventory.getItemCount(ItemType::Wheat) == 0);
+            bool breadFail = m_cookingSystem.cook(ItemType::Bread, m_inventory, &m_hud);
+            assert(!breadFail && "Cooking Bread must fail with 0 wheat");
+            assert(m_hud.hasActiveFeedback());
+
+            // Add 3 wheat and cook Bread
+            m_inventory.addItem(ItemType::Wheat, 3);
+            bool breadOk = m_cookingSystem.cook(ItemType::Bread, m_inventory, &m_hud);
+            assert(breadOk && "Cooking Bread must succeed with 3 wheat");
+            assert(m_inventory.getItemCount(ItemType::Wheat) == 0 && "Wheat must be consumed");
+            assert(m_inventory.getItemCount(ItemType::Bread) == 1 && "Bread must be added to inventory");
+            std::cout << "[Smoke Test] Cooking Bread verified: 3x Wheat consumed -> 1x Bread added to inventory!" << std::endl;
+
+            // Verify kitchen stove interaction point on map and CookingUI toggle
+            assert(m_map.getTile(4, 2).getType() == TileType::Stove && "Tile (4, 2) must be the kitchen Stove");
+            assert(!m_cookingUI.isOpen());
+            m_cookingUI.open();
+            assert(m_cookingUI.isOpen() && "CookingUI should open");
+            m_cookingUI.close();
+            assert(!m_cookingUI.isOpen() && "CookingUI should close");
+            std::cout << "[Smoke Test] Stove interaction tile & CookingUI toggle verified!" << std::endl;
         }
     }
 }
@@ -244,6 +314,11 @@ void Game::render() {
     // 5. Render Inventory Grid modal when open
     if (m_inventoryUI.isOpen()) {
         m_inventoryUI.render(m_renderer, m_inventory);
+    }
+
+    // 6. Render Cooking UI modal when open
+    if (m_cookingUI.isOpen()) {
+        m_cookingUI.render(m_renderer, m_inventory, m_cookingSystem);
     }
 
     // Present final frame buffer

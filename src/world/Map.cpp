@@ -37,6 +37,16 @@ void Map::initDefault() {
             m_tiles[getIndex(x, y)] = Tile(TileType::Water);
         }
     }
+
+    // 5. Farmhouse structure in top-left (3 wide x 2 tall, tiles x=1..3, y=1..2)
+    for (int y = 1; y <= 2; ++y) {
+        for (int x = 1; x <= 3; ++x) {
+            m_tiles[getIndex(x, y)] = Tile(TileType::Farmhouse);
+        }
+    }
+
+    // 6. Kitchen Stove interaction point at (4, 2) on the farmhouse patio
+    m_tiles[getIndex(4, 2)] = Tile(TileType::Stove);
 }
 
 bool Map::inBounds(int tileX, int tileY) const {
@@ -137,6 +147,69 @@ void Map::render(Renderer& renderer) const {
                     renderer.drawRect(px + 10, py + 4, 12, 24, SDL_Color{150, 100, 50, 255});
                     renderer.drawRect(px + 2, py + 10, 28, 4, SDL_Color{130, 85, 40, 255});
                     renderer.drawRect(px + 2, py + 20, 28, 4, SDL_Color{130, 85, 40, 255});
+                    break;
+                }
+                case TileType::Farmhouse: {
+                    // Grass base under building edges
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{88, 155, 60, 255});
+
+                    if (ty == 1) {
+                        // Upper roof tier: rich terracotta red roof shingles
+                        renderer.drawRect(px, py + 4, TILE_SIZE, TILE_SIZE - 4, SDL_Color{175, 55, 45, 255});
+                        renderer.drawRect(px, py + 4, TILE_SIZE, 4, SDL_Color{205, 75, 60, 255});
+                        renderer.drawOutline(px, py + 4, TILE_SIZE, TILE_SIZE - 4, SDL_Color{120, 35, 30, 255});
+                        // Chimney on top right of roof (tile x=3, y=1)
+                        if (tx == 3) {
+                            renderer.drawRect(px + 18, py, 8, 12, SDL_Color{150, 60, 45, 255});
+                            renderer.drawRect(px + 16, py - 2, 12, 3, SDL_Color{90, 35, 25, 255});
+                        }
+                    } else {
+                        // Lower wall tier: warm wood planks
+                        renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{165, 110, 60, 255});
+                        renderer.drawOutline(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{110, 65, 35, 255});
+                        renderer.drawLine(px, py + 10, px + TILE_SIZE, py + 10, SDL_Color{125, 75, 40, 255});
+                        renderer.drawLine(px, py + 20, px + TILE_SIZE, py + 20, SDL_Color{125, 75, 40, 255});
+
+                        // Tile (2, 2) is the farmhouse entrance door
+                        if (tx == 2) {
+                            renderer.drawRect(px + 8, py + 6, 16, 26, SDL_Color{95, 50, 25, 255});
+                            renderer.drawOutline(px + 8, py + 6, 16, 26, SDL_Color{65, 30, 15, 255});
+                            // Brass door knob
+                            renderer.drawRect(px + 20, py + 18, 3, 3, SDL_Color{245, 210, 50, 255});
+                        } else {
+                            // Cozy warm window with cross pane
+                            renderer.drawRect(px + 7, py + 7, 18, 16, SDL_Color{255, 225, 120, 255});
+                            renderer.drawOutline(px + 7, py + 7, 18, 16, SDL_Color{85, 45, 20, 255});
+                            renderer.drawLine(px + 16, py + 7, px + 16, py + 23, SDL_Color{85, 45, 20, 255});
+                            renderer.drawLine(px + 7, py + 15, px + 25, py + 15, SDL_Color{85, 45, 20, 255});
+                        }
+                    }
+                    break;
+                }
+                case TileType::Stove: {
+                    // Kitchen stone patio foundation
+                    renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{115, 110, 105, 255});
+                    renderer.drawOutline(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{85, 80, 75, 255});
+
+                    // Cast-iron stove body
+                    renderer.drawRect(px + 4, py + 6, 24, 23, SDL_Color{48, 48, 52, 255});
+                    renderer.drawOutline(px + 4, py + 6, 24, 23, SDL_Color{25, 25, 28, 255});
+
+                    // Top range surface
+                    renderer.drawRect(px + 3, py + 4, 26, 4, SDL_Color{75, 75, 82, 255});
+
+                    // Fiery glowing stove door with embers
+                    renderer.drawRect(px + 8, py + 15, 16, 11, SDL_Color{20, 20, 22, 255});
+                    renderer.drawRect(px + 10, py + 17, 12, 7, SDL_Color{235, 85, 25, 255});
+                    renderer.drawRect(px + 12, py + 19, 8, 4, SDL_Color{255, 200, 50, 255});
+
+                    // Metal cooking pot on stove top with rising steam
+                    renderer.drawRect(px + 10, py + 1, 12, 6, SDL_Color{160, 165, 175, 255});
+                    renderer.drawRect(px + 8, py + 3, 2, 2, SDL_Color{130, 135, 145, 255});
+                    renderer.drawRect(px + 22, py + 3, 2, 2, SDL_Color{130, 135, 145, 255});
+                    // Steam puffs
+                    renderer.drawRect(px + 12, py - 2, 2, 2, SDL_Color{230, 235, 245, 200});
+                    renderer.drawRect(px + 16, py - 4, 3, 2, SDL_Color{230, 235, 245, 200});
                     break;
                 }
             }

@@ -130,3 +130,29 @@ void drawItemPlaceholder(Renderer& renderer, ItemType type, int x, int y, int si
             break;
     }
 }
+
+ItemType itemTypeFromString(const std::string& name) {
+    if (name == "TomatoSeeds" || name == "Tomato Seeds" || name == "tomato_seeds") return ItemType::TomatoSeeds;
+    if (name == "CarrotSeeds" || name == "Carrot Seeds" || name == "carrot_seeds") return ItemType::CarrotSeeds;
+    if (name == "WheatSeeds" || name == "Wheat Seeds" || name == "wheat_seeds") return ItemType::WheatSeeds;
+    if (name == "Tomato" || name == "tomato") return ItemType::Tomato;
+    if (name == "Carrot" || name == "carrot") return ItemType::Carrot;
+    if (name == "Wheat" || name == "wheat") return ItemType::Wheat;
+    if (name == "Salad" || name == "salad") return ItemType::Salad;
+    if (name == "Bread" || name == "bread") return ItemType::Bread;
+    return ItemType::Empty;
+}
+
+std::string itemTypeToString(ItemType type) {
+    switch (type) {
+        case ItemType::TomatoSeeds: return "Tomato Seeds";
+        case ItemType::CarrotSeeds: return "Carrot Seeds";
+        case ItemType::WheatSeeds:  return "Wheat Seeds";
+        case ItemType::Tomato:       return "Tomato";
+        case ItemType::Carrot:       return "Carrot";
+        case ItemType::Wheat:        return "Wheat";
+        case ItemType::Salad:        return "Salad";
+        case ItemType::Bread:        return "Bread";
+        default:                     return "Empty";
+    }
+}

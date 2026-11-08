@@ -11,6 +11,8 @@
 #include "systems/FarmSystem.h"
 #include "ui/HUD.h"
 #include "ui/InventoryUI.h"
+#include "systems/CookingSystem.h"
+#include "ui/CookingUI.h"
 
 // Top-level application class orchestrating game setup, fixed-timestep loop, and teardown.
 class Game {
@@ -36,6 +38,10 @@ public:
     HUD& getHUD() { return m_hud; }
     const InventoryUI& getInventoryUI() const { return m_inventoryUI; }
     InventoryUI& getInventoryUI() { return m_inventoryUI; }
+    const CookingSystem& getCookingSystem() const { return m_cookingSystem; }
+    CookingSystem& getCookingSystem() { return m_cookingSystem; }
+    const CookingUI& getCookingUI() const { return m_cookingUI; }
+    CookingUI& getCookingUI() { return m_cookingUI; }
 
 private:
     void handleInput();
@@ -52,8 +58,10 @@ private:
     Player m_player;
     Inventory m_inventory;
     FarmSystem m_farmSystem;
+    CookingSystem m_cookingSystem;
     HUD m_hud;
     InventoryUI m_inventoryUI;
+    CookingUI m_cookingUI;
 
     bool m_isRunning = false;
     bool m_smokeTestMode = false;

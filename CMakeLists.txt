@@ -26,6 +26,8 @@ set(SOURCES
     src/ui/BitmapFont.cpp
     src/ui/HUD.cpp
     src/ui/InventoryUI.cpp
+    src/systems/CookingSystem.cpp
+    src/ui/CookingUI.cpp
 )
 
 add_executable(sunny_hollow_farm ${SOURCES})

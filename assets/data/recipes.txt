@@ -1,0 +1,14 @@
+# Sunny Hollow Farm - Cooking Recipes
+#
+# Recipe File Format:
+# - Each recipe is defined on a single line:
+#   <ResultDishName> = <Ingredient1Name>:<Count>, <Ingredient2Name>:<Count>, ...
+# - Lines starting with '#' and blank lines are ignored as comments.
+# - Ingredient counts must be positive integers.
+#
+# Available items:
+# - Dishes: Salad, Bread
+# - Produce / Ingredients: Tomato, Carrot, Wheat
+#
+Salad = Tomato:2
+Bread = Wheat:3

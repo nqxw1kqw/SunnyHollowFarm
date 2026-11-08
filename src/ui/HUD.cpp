@@ -50,6 +50,14 @@ void HUD::drawToolIcon(Renderer& renderer, ToolType type, int x, int y) const {
             renderer.drawRect(x + 12, y + 10, 2, 2, SDL_Color{50, 140, 40, 255});
             break;
         }
+        case ToolType::WheatSeeds: {
+            // Seed packet pouch with golden wheat emblem
+            renderer.drawRect(x + 6, y + 6, 14, 16, SDL_Color{220, 200, 140, 255});
+            renderer.drawRect(x + 8, y + 8, 10, 12, SDL_Color{115, 175, 80, 255});
+            renderer.drawRect(x + 11, y + 11, 4, 5, SDL_Color{240, 215, 60, 255});
+            renderer.drawRect(x + 12, y + 9, 2, 2, SDL_Color{200, 160, 40, 255});
+            break;
+        }
     }
 }
 
@@ -76,7 +84,7 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     constexpr int HOTBAR_X = 14;
     constexpr int HOTBAR_Y = 8;
     constexpr int SLOT_SIZE = 34;
-    constexpr int SLOT_COUNT = 3;
+    constexpr int SLOT_COUNT = 4;
 
     renderer.drawRect(HOTBAR_X - 4, HOTBAR_Y - 4,
                       (SLOT_SIZE * SLOT_COUNT) + 16, SLOT_SIZE + 8,
@@ -88,7 +96,8 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     const ToolType tools[SLOT_COUNT] = {
         ToolType::Hoe,
         ToolType::WateringCan,
-        ToolType::TomatoSeeds
+        ToolType::TomatoSeeds,
+        ToolType::WheatSeeds
     };
 
     for (int i = 0; i < SLOT_COUNT; ++i) {
@@ -101,12 +110,15 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
 
         drawToolIcon(renderer, tools[i], slotX + 4, slotY + 4);
 
-        // Key number (1, 2, 3) in top-left
+        // Key number (1, 2, 3, 4) in top-left
         BitmapFont::drawNumber(renderer, i + 1, slotX + 3, slotY + 3, SDL_Color{240, 230, 200, 255}, 1);
 
-        // Seed count for seed tool
+        // Seed count for seed tools
         if (tools[i] == ToolType::TomatoSeeds) {
             int seedCount = inventory.getItemCount(ItemType::TomatoSeeds);
+            BitmapFont::drawNumber(renderer, seedCount, slotX + 18, slotY + 20, SDL_Color{255, 245, 140, 255}, 2);
+        } else if (tools[i] == ToolType::WheatSeeds) {
+            int seedCount = inventory.getItemCount(ItemType::WheatSeeds);
             BitmapFont::drawNumber(renderer, seedCount, slotX + 18, slotY + 20, SDL_Color{255, 245, 140, 255}, 2);
         }
 

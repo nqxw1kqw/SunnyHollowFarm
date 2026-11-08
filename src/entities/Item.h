@@ -33,5 +33,9 @@ struct ItemDefinition {
 // Retrieves constant metadata for a given item type.
 const ItemDefinition& getItemDefinition(ItemType type);
 
+// Name conversion utilities for data parsing (recipes.txt, prices.txt)
+ItemType itemTypeFromString(const std::string& name);
+std::string itemTypeToString(ItemType type);
+
 // Draws a pixel art placeholder icon for the given item type.
 void drawItemPlaceholder(Renderer& renderer, ItemType type, int x, int y, int size = 32);

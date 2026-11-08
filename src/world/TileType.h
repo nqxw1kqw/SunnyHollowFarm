@@ -7,5 +7,7 @@ enum class TileType {
     TilledSoil,     // Soil prepared with a hoe, ready for planting
     WateredSoil,    // Tilled soil that has been watered, accelerating crop growth
     Water,          // Pond water (impassable)
-    Fence           // Boundary wooden fence (impassable)
+    Fence,          // Boundary wooden fence (impassable)
+    Farmhouse,      // Farmhouse exterior & bed/rest structure (impassable)
+    Stove           // Kitchen stove cooking interaction point (impassable)
 };

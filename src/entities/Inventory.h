@@ -9,7 +9,8 @@
 enum class ToolType {
     Hoe = 0,
     WateringCan = 1,
-    TomatoSeeds = 2
+    TomatoSeeds = 2,
+    WheatSeeds = 3
 };
 
 // Represents a single item container slot in the inventory grid.

@@ -75,11 +75,20 @@ bool FarmSystem::water(int tileX, int tileY, Map& map, Player& player, HUD* hud)
     return true;
 }
 
-bool FarmSystem::plant(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud) {
+bool FarmSystem::plant(int tileX, int tileY, Map& map, Inventory& inventory, Player& player, HUD* hud, ItemType seedType) {
     if (!map.inBounds(tileX, tileY)) return false;
 
-    if (inventory.getItemCount(ItemType::TomatoSeeds) <= 0) {
-        std::cout << "[Farm] Out of tomato seeds!" << std::endl;
+    // Determine seed to plant
+    if (seedType == ItemType::Empty) {
+        if (inventory.activeTool == ToolType::WheatSeeds) {
+            seedType = ItemType::WheatSeeds;
+        } else {
+            seedType = ItemType::TomatoSeeds;
+        }
+    }
+
+    if (inventory.getItemCount(seedType) <= 0) {
+        std::cout << "[Farm] Out of " << itemTypeToString(seedType) << "!" << std::endl;
         return false;
     }
 
@@ -104,12 +113,13 @@ bool FarmSystem::plant(int tileX, int tileY, Map& map, Inventory& inventory, Pla
         return false;
     }
 
-    m_crops.emplace_back(tileX, tileY);
-    inventory.removeItem(ItemType::TomatoSeeds, 1);
+    ItemType cropProduce = (seedType == ItemType::WheatSeeds) ? ItemType::Wheat : ItemType::Tomato;
+    m_crops.emplace_back(tileX, tileY, cropProduce);
+    inventory.removeItem(seedType, 1);
     player.consumeEnergy(Config::ENERGY_COST_PLANT);
 
-    std::cout << "[Farm] Planted tomato seed at (" << tileX << ", " << tileY
-              << ") [Seeds remaining: " << inventory.getItemCount(ItemType::TomatoSeeds)
+    std::cout << "[Farm] Planted " << itemTypeToString(seedType) << " at (" << tileX << ", " << tileY
+              << ") [Seeds remaining: " << inventory.getItemCount(seedType)
               << "] [Energy: " << player.getEnergy() << "/" << player.getMaxEnergy() << "]" << std::endl;
     return true;
 }
@@ -134,12 +144,14 @@ bool FarmSystem::harvest(int tileX, int tileY, Map& map, Inventory& inventory, P
         return false;
     }
 
+    ItemType harvestItem = it->getHarvestItem();
     m_crops.erase(it);
-    inventory.addItem(ItemType::Tomato, 1);
+    inventory.addItem(harvestItem, 1);
     player.consumeEnergy(Config::ENERGY_COST_HARVEST);
 
-    std::cout << "[Farm] Harvested ripe tomato! [Total tomatoes in inventory: "
-              << inventory.getItemCount(ItemType::Tomato)
+    std::cout << "[Farm] Harvested ripe " << itemTypeToString(harvestItem)
+              << "! [Total " << itemTypeToString(harvestItem) << " in inventory: "
+              << inventory.getItemCount(harvestItem)
               << "] [Energy: " << player.getEnergy() << "/" << player.getMaxEnergy() << "]" << std::endl;
     return true;
 }
@@ -162,10 +174,31 @@ bool FarmSystem::interact(int tileX, int tileY, Map& map, Inventory& inventory, 
             return water(tileX, tileY, map, player, hud);
 
         case ToolType::TomatoSeeds:
-            return plant(tileX, tileY, map, inventory, player, hud);
+            return plant(tileX, tileY, map, inventory, player, hud, ItemType::TomatoSeeds);
+
+        case ToolType::WheatSeeds:
+            return plant(tileX, tileY, map, inventory, player, hud, ItemType::WheatSeeds);
     }
 
     return false;
+}
+
+void FarmSystem::advanceDay(Map& map) {
+    // 1. Advance all active crops overnight by 1 growth stage
+    for (auto& crop : m_crops) {
+        crop.advanceStage();
+    }
+
+    // 2. Dry watered soil back to regular tilled soil under standard overnight drying rule
+    for (int y = 0; y < Map::HEIGHT; ++y) {
+        for (int x = 0; x < Map::WIDTH; ++x) {
+            if (map.inBounds(x, y) && map.getTile(x, y).getType() == TileType::WateredSoil) {
+                map.setTileType(x, y, TileType::TilledSoil);
+            }
+        }
+    }
+
+    std::cout << "[Farm] Overnight growth complete: crops advanced 1 stage, watered soil dried back to tilled soil." << std::endl;
 }
 
 void FarmSystem::update(float dt, Map& map) {

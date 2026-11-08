@@ -1,8 +1,15 @@
 #include "entities/Crop.h"
 #include "world/Map.h"
 
-Crop::Crop(int tileX, int tileY)
-    : m_tileX(tileX), m_tileY(tileY) {}
+Crop::Crop(int tileX, int tileY, ItemType cropType)
+    : m_tileX(tileX), m_tileY(tileY), m_cropType(cropType) {}
+
+void Crop::advanceStage() {
+    if (m_stage != CropStage::Harvest) {
+        m_stage = static_cast<CropStage>(static_cast<int>(m_stage) + 1);
+        m_stageTimer = 0.0f;
+    }
+}
 
 void Crop::update(float dt, float speedMultiplier) {
     if (m_stage == CropStage::Harvest) {
@@ -25,6 +32,44 @@ void Crop::render(Renderer& renderer) const {
     const int px = m_tileX * Map::TILE_SIZE;
     const int py = m_tileY * Map::TILE_SIZE;
 
+    bool isWheat = (m_cropType == ItemType::Wheat || m_cropType == ItemType::WheatSeeds);
+
+    if (isWheat) {
+        switch (m_stage) {
+            case CropStage::Seed: {
+                // Soil mound with golden grain seeds
+                renderer.drawRect(px + 10, py + 14, 12, 4, SDL_Color{70, 42, 22, 255});
+                renderer.drawRect(px + 12, py + 13, 2, 2, SDL_Color{240, 215, 60, 255});
+                renderer.drawRect(px + 17, py + 14, 2, 2, SDL_Color{240, 215, 60, 255});
+                break;
+            }
+            case CropStage::Sprout: {
+                // Thin golden-green shoots
+                renderer.drawRect(px + 13, py + 14, 2, 8, SDL_Color{120, 185, 60, 255});
+                renderer.drawRect(px + 17, py + 12, 2, 10, SDL_Color{120, 185, 60, 255});
+                break;
+            }
+            case CropStage::Growing: {
+                // Bushy green stalks with golden heads
+                renderer.drawRect(px + 11, py + 10, 3, 13, SDL_Color{160, 175, 50, 255});
+                renderer.drawRect(px + 16, py + 8, 3, 15, SDL_Color{175, 185, 55, 255});
+                renderer.drawRect(px + 10, py + 7, 5, 5, SDL_Color{220, 195, 60, 255});
+                renderer.drawRect(px + 15, py + 5, 5, 5, SDL_Color{230, 205, 65, 255});
+                break;
+            }
+            case CropStage::Harvest: {
+                // Full golden wheat sheaves ready for harvest
+                renderer.drawRect(px + 8, py + 8, 16, 17, SDL_Color{210, 170, 45, 255});
+                renderer.drawRect(px + 10, py + 5, 12, 7, SDL_Color{245, 210, 65, 255});
+                renderer.drawRect(px + 7, py + 16, 18, 3, SDL_Color{170, 50, 40, 255}); // tie ribbon
+                renderer.drawOutline(px + 4, py + 4, 24, 23, SDL_Color{255, 235, 100, 180}); // sparkle
+                break;
+            }
+        }
+        return;
+    }
+
+    // Default: Tomato
     switch (m_stage) {
         case CropStage::Seed: {
             // Stage 1: Little soil mound with visible seed grains

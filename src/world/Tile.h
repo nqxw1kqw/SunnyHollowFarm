@@ -13,7 +13,10 @@ public:
 
     // Impassable tiles block player movement.
     bool isWalkable() const {
-        return m_type != TileType::Water && m_type != TileType::Fence;
+        return m_type != TileType::Water &&
+               m_type != TileType::Fence &&
+               m_type != TileType::Farmhouse &&
+               m_type != TileType::Stove;
     }
 
     // Dirt or grass can be tilled using a hoe.
