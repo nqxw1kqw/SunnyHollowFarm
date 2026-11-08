@@ -334,6 +334,17 @@ bool SaveSystem::save(const Game& game, const std::string& filepath) {
         if (i + 1 < plotEntries.size()) ss << ",";
         ss << "\n";
     }
+    ss << "  ],\n";
+
+    // Chickens & ground eggs
+    ss << "  \"chicken_count\": " << game.getChickenSystem().getChickenCount() << ",\n";
+    ss << "  \"ground_eggs\": [\n";
+    const auto& eggs = game.getChickenSystem().getGroundEggs();
+    for (size_t i = 0; i < eggs.size(); ++i) {
+        ss << "    {\"x\": " << eggs[i].tileX << ", \"y\": " << eggs[i].tileY << "}";
+        if (i + 1 < eggs.size()) ss << ",";
+        ss << "\n";
+    }
     ss << "  ]\n";
     ss << "}\n";
 
@@ -481,6 +492,39 @@ bool SaveSystem::load(Game& game, const std::string& filepath) {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    // 7. Restore chicken pen livestock and ground eggs
+    game.getChickenSystem().reset();
+    int chickenCount = 0;
+    if (const JsonValue* cVal = root.get("chicken_count")) {
+        chickenCount = cVal->asInt(0);
+    } else if (const JsonValue* cObj = root.get("chickens")) {
+        if (cObj->isObject()) {
+            if (const JsonValue* cVal = cObj->get("count")) {
+                chickenCount = cVal->asInt(0);
+            }
+        } else if (cObj->isNumber()) {
+            chickenCount = cObj->asInt(0);
+        }
+    }
+    game.getChickenSystem().setChickenCount(chickenCount);
+
+    const JsonValue* eggsArr = root.get("ground_eggs");
+    if (!eggsArr) {
+        if (const JsonValue* cObj = root.get("chickens")) {
+            eggsArr = cObj->get("eggs");
+        }
+    }
+    if (eggsArr && eggsArr->isArray()) {
+        for (const auto& eggVal : eggsArr->arrVal) {
+            if (eggVal.isObject()) {
+                int ex = 0, ey = 0;
+                if (const JsonValue* v = eggVal.get("x")) ex = v->asInt(0);
+                if (const JsonValue* v = eggVal.get("y")) ey = v->asInt(0);
+                game.getChickenSystem().addGroundEgg(ex, ey);
             }
         }
     }

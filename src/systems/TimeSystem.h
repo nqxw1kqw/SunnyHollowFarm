@@ -27,6 +27,7 @@ public:
     void setWeather(Weather weather) { m_weather = weather; }
 
     void setOnSleepCallback(std::function<void()> callback) { m_onSleepCallback = callback; }
+    void setOnDayAdvanceCallback(std::function<void(int)> callback) { m_onDayAdvanceCallback = callback; }
 
     // Advances the day cycle through sleep:
     // 1. Day counter increments.
@@ -44,4 +45,5 @@ private:
     int m_day = 1;
     Weather m_weather = Weather::Sunny;
     std::function<void()> m_onSleepCallback = nullptr;
+    std::function<void(int)> m_onDayAdvanceCallback = nullptr;
 };

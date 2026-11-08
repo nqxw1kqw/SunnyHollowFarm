@@ -103,6 +103,10 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
 
     // Initialize shop prices from assets/data/prices.txt
     m_shopSystem.loadPrices("assets/data/prices.txt");
+    m_shopSystem.setChickenHandler(
+        [this]() { return m_chickenSystem.getChickenCount(); },
+        [this]() { return m_chickenSystem.addChicken(); }
+    );
 
     // Initialize farmhouse interior room map
     m_interiorMap.initInterior();
@@ -110,7 +114,10 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
     // Initialize audio system (SDL2_mixer)
     m_audio.init();
 
-    // Wire auto-save whenever player sleeps (Milestone 6 / Part C)
+    // Wire day advance (egg rolls) and auto-save whenever player sleeps (Milestone 6 / Part C)
+    m_timeSystem.setOnDayAdvanceCallback([this](int newDay) {
+        m_chickenSystem.onNewMorning(newDay);
+    });
     m_timeSystem.setOnSleepCallback([this]() {
         saveGame();
     });
@@ -297,6 +304,7 @@ void Game::resetGame() {
     m_map.initDefault();
     m_interiorMap.initInterior();
     m_farmSystem.clearCrops();
+    m_chickenSystem.reset();
     m_audio.setMuted(false);
     m_fadePhase = FadePhase::None;
     m_transitionAction = TransitionAction::None;
@@ -313,7 +321,7 @@ bool Game::eatSelectedItem() {
         int slotIdx = m_inventoryUI.getSelectedSlot();
         if (slotIdx >= 0 && slotIdx < m_inventory.getSlotCount()) {
             ItemType t = m_inventory.getSlot(slotIdx).type;
-            if (t == ItemType::Salad || t == ItemType::Bread) {
+            if (t == ItemType::Salad || t == ItemType::Bread || t == ItemType::Omelette) {
                 selectedDish = t;
             }
         }
@@ -342,10 +350,15 @@ bool Game::eatSelectedItem() {
         return false;
     }
 
-    int energyBoost = (selectedDish == ItemType::Salad) ? 25 : 35;
+    int energyBoost = 25;
+    if (selectedDish == ItemType::Bread) {
+        energyBoost = 35;
+    } else if (selectedDish == ItemType::Omelette) {
+        energyBoost = 40;
+    }
     m_inventory.removeItem(selectedDish, 1);
     m_player.restoreEnergy(energyBoost);
-    std::string banner = (selectedDish == ItemType::Salad) ? "Ate Salad: +25 Energy" : "Ate Bread: +35 Energy";
+    std::string banner = "Ate " + itemTypeToString(selectedDish) + ": +" + std::to_string(energyBoost) + " Energy";
     m_hud.showFeedback(banner);
     m_audio.playSFX(SFX::UIConfirm);
 
@@ -566,6 +579,17 @@ void Game::handleInput() {
             return;
         }
 
+        // 5b. Egg collection interaction check (interacting on egg tile in pen)
+        int currTx = static_cast<int>(std::round(m_player.getX() / static_cast<float>(Map::TILE_SIZE)));
+        int currTy = static_cast<int>(std::round(m_player.getY() / static_cast<float>(Map::TILE_SIZE)));
+        if (m_chickenSystem.hasEggAt(tx, ty)) {
+            m_chickenSystem.collectEgg(tx, ty, m_inventory, &m_hud, &m_audio);
+            return;
+        } else if (m_chickenSystem.hasEggAt(currTx, currTy)) {
+            m_chickenSystem.collectEgg(currTx, currTy, m_inventory, &m_hud, &m_audio);
+            return;
+        }
+
         // 6. Farming interaction
         m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud, &m_audio);
     }
@@ -583,6 +607,10 @@ void Game::update(float dt) {
     m_interiorMap.update(dt);
     m_sellerNPC.update(dt);
     m_buyerNPC.update(dt);
+
+    if (m_location == Location::Farm) {
+        m_chickenSystem.update(dt);
+    }
 
     // Fishing system update & safety checks
     if (m_fishingSystem.isFishing()) {
@@ -1450,9 +1478,10 @@ void Game::render() {
         m_farmSystem.render(m_renderer);
         m_fishingSystem.render(m_renderer);
 
-        // 3. Render merchant NPCs (Seller and Buyer)
+        // 3. Render merchant NPCs (Seller and Buyer) and chicken livestock
         m_sellerNPC.render(m_renderer);
         m_buyerNPC.render(m_renderer);
+        m_chickenSystem.render(m_renderer);
     } else {
         // Render Farmhouse interior room
         m_interiorMap.render(m_renderer);
@@ -1475,6 +1504,9 @@ void Game::render() {
         bool showPrompt = false;
 
         if (m_location == Location::Farm) {
+            int currTx = static_cast<int>(std::round(m_player.getX() / static_cast<float>(Map::TILE_SIZE)));
+            int currTy = static_cast<int>(std::round(m_player.getY() / static_cast<float>(Map::TILE_SIZE)));
+
             if ((tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY()) ||
                 (tx >= 13 && tx <= 15 && ty == 1)) {
                 promptX = 14 * Map::TILE_SIZE - 22;
@@ -1490,6 +1522,15 @@ void Game::render() {
                 promptW = 76;
                 promptH = 24;
                 promptText = "[E] SHOP";
+                showPrompt = true;
+            } else if (m_chickenSystem.hasEggAt(tx, ty) || m_chickenSystem.hasEggAt(currTx, currTy)) {
+                int eggTileX = m_chickenSystem.hasEggAt(tx, ty) ? tx : currTx;
+                int eggTileY = m_chickenSystem.hasEggAt(tx, ty) ? ty : currTy;
+                promptX = eggTileX * Map::TILE_SIZE - 20;
+                promptY = eggTileY * Map::TILE_SIZE - 28;
+                promptW = 76;
+                promptH = 24;
+                promptText = "[E] EGG";
                 showPrompt = true;
             } else if (m_map.inBounds(tx, ty) &&
                        (m_map.getTile(tx, ty).getType() == TileType::Farmhouse || TimeSystem::isBedTile(tx, ty))) {

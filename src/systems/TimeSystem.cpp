@@ -10,6 +10,10 @@ void TimeSystem::sleep(Player& player, FarmSystem& farmSystem, Map& map, HUD* hu
     m_day++;
     m_weather = calculateWeatherForDay(m_day);
 
+    if (m_onDayAdvanceCallback) {
+        m_onDayAdvanceCallback(m_day);
+    }
+
     // 1. Fully restore player stamina
     int restoredAmount = player.getMaxEnergy() - player.getEnergy();
     player.setEnergy(player.getMaxEnergy());

@@ -40,6 +40,8 @@ set(SOURCES
     src/systems/SaveSystem.cpp
     src/systems/AudioSystem.cpp
     src/systems/FishingSystem.cpp
+    src/entities/Chicken.cpp
+    src/systems/ChickenSystem.cpp
 )
 
 add_executable(sunny_hollow_farm ${SOURCES})

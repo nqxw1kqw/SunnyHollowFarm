@@ -19,6 +19,7 @@
 #include "systems/TimeSystem.h"
 #include "systems/AudioSystem.h"
 #include "systems/FishingSystem.h"
+#include "systems/ChickenSystem.h"
 
 enum class Location {
     Farm,
@@ -78,6 +79,8 @@ public:
     AudioSystem& getAudioSystem() { return m_audio; }
     const FishingSystem& getFishingSystem() const { return m_fishingSystem; }
     FishingSystem& getFishingSystem() { return m_fishingSystem; }
+    const ChickenSystem& getChickenSystem() const { return m_chickenSystem; }
+    ChickenSystem& getChickenSystem() { return m_chickenSystem; }
 
     Location getLocation() const { return m_location; }
     void setLocation(Location loc) { m_location = loc; }
@@ -145,6 +148,7 @@ private:
     CookingUI m_cookingUI;
     ShopUI m_shopUI;
     FishingSystem m_fishingSystem;
+    ChickenSystem m_chickenSystem;
 
     bool m_isRunning = false;
     bool m_smokeTestMode = false;

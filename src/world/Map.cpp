@@ -21,6 +21,23 @@ void Map::initDefault() {
         }
     }
 
+    // 2b. Chicken pen enclosure in southwest meadow (4x3 interior: x=2..5, y=11..13)
+    // Top fence at y=10 (leaving 1-tile gate gap at x=3 for player entry)
+    for (int x = 1; x <= 6; ++x) {
+        if (x != 3) {
+            m_tiles[getIndex(x, 10)] = Tile(TileType::Fence);
+        }
+    }
+    // Bottom fence at y=14
+    for (int x = 1; x <= 6; ++x) {
+        m_tiles[getIndex(x, 14)] = Tile(TileType::Fence);
+    }
+    // Left fence at x=1 and Right fence at x=6
+    for (int y = 11; y <= 13; ++y) {
+        m_tiles[getIndex(1, y)] = Tile(TileType::Fence);
+        m_tiles[getIndex(6, y)] = Tile(TileType::Fence);
+    }
+
     // 3. Central farming soil plot (8 wide x 6 tall)
     for (int y = 4; y <= 9; ++y) {
         for (int x = 5; x <= 12; ++x) {
@@ -304,11 +321,22 @@ void Map::render(Renderer& renderer) const {
                 }
 
                 if (tile.getType() == TileType::Fence) {
-                    const SDL_Rect fenceSrc{0, 0, 32, 32};
+                    bool hasVert = (ty > 0 && getTile(tx, ty - 1).getType() == TileType::Fence) ||
+                                   (ty < HEIGHT - 1 && getTile(tx, ty + 1).getType() == TileType::Fence);
+                    bool hasHoriz = (tx > 0 && getTile(tx - 1, ty).getType() == TileType::Fence) ||
+                                    (tx < WIDTH - 1 && getTile(tx + 1, ty).getType() == TileType::Fence);
+                    bool isVertOnly = (hasVert && !hasHoriz);
+                    const SDL_Rect fenceSrc{isVertOnly ? 32 : 0, 0, 32, 32};
                     if (!renderer.drawSprite("tiles_fence.png", px, py, TILE_SIZE, TILE_SIZE, &fenceSrc)) {
-                        renderer.drawRect(px + 10, py + 4, 12, 24, SDL_Color{150, 100, 50, 255});
-                        renderer.drawRect(px + 2, py + 10, 28, 4, SDL_Color{130, 85, 40, 255});
-                        renderer.drawRect(px + 2, py + 20, 28, 4, SDL_Color{130, 85, 40, 255});
+                        if (isVertOnly) {
+                            renderer.drawRect(px + 4, py + 10, 24, 12, SDL_Color{150, 100, 50, 255});
+                            renderer.drawRect(px + 10, py + 2, 4, 28, SDL_Color{130, 85, 40, 255});
+                            renderer.drawRect(px + 20, py + 2, 4, 28, SDL_Color{130, 85, 40, 255});
+                        } else {
+                            renderer.drawRect(px + 10, py + 4, 12, 24, SDL_Color{150, 100, 50, 255});
+                            renderer.drawRect(px + 2, py + 10, 28, 4, SDL_Color{130, 85, 40, 255});
+                            renderer.drawRect(px + 2, py + 20, 28, 4, SDL_Color{130, 85, 40, 255});
+                        }
                     }
                     continue;
                 }
