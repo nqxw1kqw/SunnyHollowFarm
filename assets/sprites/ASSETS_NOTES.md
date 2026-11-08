@@ -234,3 +234,43 @@ Validation: both finals are nonempty 32×32 RGBA PNGs with binary alpha,
 transparent margins, and colors from the shared palette. Raw and final images
 were visually inspected. Only assets and notes changed; no runtime integration
 or code changes were made, and no game build was needed.
+
+## Chicken art set and brighter grilled fish
+
+Seven assets were generated individually with the built-in image generator.
+Every exact accepted prompt starts verbatim with Section 4's style guide and is
+recorded in `../sprites_raw/CHICKEN_PROMPTS.json`, together with raw dimensions,
+crop bounds, resized subject dimensions, and final placement. The idle hen was
+the identity reference for all three action poses. Walk 1 uses the accepted
+revision with a lifted rear foot to distinguish the opposite step.
+
+| File | Raw size | Final size | Subject |
+|---|---|---|---|
+| `chicken_idle.png` | 1254×1254 | 32×32 | Plump white hen, red comb, standing facing right |
+| `chicken_peck.png` | 1254×1254 | 32×32 | Same hen, head down and beak at ground level |
+| `chicken_walk_0.png` | 1254×1254 | 32×32 | Same hen, forward step with separated feet |
+| `chicken_walk_1.png` | 1254×1254 | 32×32 | Same hen, opposite step with rear foot lifted |
+| `item_egg.png` | 1266×1242 | 32×32 | Single fresh warm cream egg |
+| `item_omelette.png` | 1265×1243 | 32×32 | Folded golden omelette on a small cream plate |
+| `item_grilled_fish.png` | 1254×1254 | 32×32 | Brighter gold-and-cream grilled fish on a skewer |
+
+Raw PNGs are untouched generator outputs under matching filenames in
+`../sprites_raw/`. Both the old grilled-fish raw and final were intentionally
+replaced; the older Fish item icons section and FISH_PROMPTS.json describe the
+superseded generation for this filename. CHICKEN_PROMPTS.json is authoritative
+for its replacement. The fresh fish and tomato icons were preserved.
+
+Processing: crop each raw to its alpha>=128 bounds, fit proportionally into a
+24×24 box, resize using `Image.Resampling.NEAREST`, then center on a transparent
+32×32 canvas using the recorded integer placement. Snap RGB to the existing
+38-color palette from process_assets.py with no dithering and threshold alpha
+at 128. No subject art was drawn by code. The original processing script does
+not rebuild this addition. Hen standing/walking subjects are 20×24; pecking is
+24×22; egg is 20×24; omelette is 24×22; grilled fish is 24×11.
+
+Validation: all seven finals are nonempty RGBA PNGs, exactly 32×32, with binary
+alpha, transparent margins, and colors from the shared palette. Finals were
+visually inspected together with item_tomato.png at enlarged nearest-neighbor
+scale. The replacement fish is visibly brighter and its three grill marks remain
+readable. Only assets and notes changed; no game integration or code changes,
+and no game build was needed.

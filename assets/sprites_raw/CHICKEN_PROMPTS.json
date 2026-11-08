@@ -1,0 +1,177 @@
+{
+  "chicken_idle.png": {
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a single plump white farm hen standing idle, side-ish three-quarter view facing right, red comb and wattle, small yellow beak, orange legs, rounded cream-white body and small raised tail. Cozy readable game sprite, simple large pixel clusters designed for downscaling to 32x32. Whole subject centered with transparent padding, occupies about 75% of canvas. No ground, no shadow, no extra objects.",
+    "raw_size": [
+      1254,
+      1254
+    ],
+    "crop": [
+      165,
+      147,
+      1014,
+      1181
+    ],
+    "resized_subject": [
+      20,
+      24
+    ],
+    "placement": [
+      6,
+      4
+    ],
+    "final_size": [
+      32,
+      32
+    ]
+  },
+  "chicken_peck.png": {
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nUse case: identity-preserve. Reference is the same hen to preserve exactly: white plump body, red comb/wattle, yellow beak, orange legs, tail and right-facing orientation. Change pose only: head and neck bent down to the ground on the right, beak touching ground level, rump lifted in a clear pecking pose. Single hen, no ground or props. Whole body visible, centered transparent padding.",
+    "raw_size": [
+      1254,
+      1254
+    ],
+    "crop": [
+      163,
+      207,
+      1102,
+      1080
+    ],
+    "resized_subject": [
+      24,
+      22
+    ],
+    "placement": [
+      4,
+      5
+    ],
+    "final_size": [
+      32,
+      32
+    ]
+  },
+  "chicken_walk_0.png": {
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nUse case: identity-preserve. Preserve the reference hen's appearance, body proportions, red comb, white feathers, right-facing orientation. Change legs only for walking frame 0: near leg extended forward to the right, far leg back to left. Clear separated orange feet, body at same height, whole hen visible centered on transparent canvas, no ground.",
+    "raw_size": [
+      1254,
+      1254
+    ],
+    "crop": [
+      164,
+      145,
+      1017,
+      1162
+    ],
+    "resized_subject": [
+      20,
+      24
+    ],
+    "placement": [
+      6,
+      4
+    ],
+    "final_size": [
+      32,
+      32
+    ]
+  },
+  "chicken_walk_1.png": {
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nUse case: identity-preserve. Keep this exact hen's white body, head, comb, wings and right-facing direction unchanged. Change ONLY the legs to a visibly opposite walking pose: the near orange leg beneath the front/right belly bends BACKWARD with its foot lifted off the ground toward the LEFT; the far leg beneath the left/rear belly reaches FORWARD under the body toward the RIGHT and touches ground. A clear high lifted backward foot and one planted forward foot. Do not use two spread planted feet. Whole subject centered transparent background, no ground.",
+    "raw_size": [
+      1254,
+      1254
+    ],
+    "crop": [
+      164,
+      147,
+      1016,
+      1172
+    ],
+    "resized_subject": [
+      20,
+      24
+    ],
+    "placement": [
+      6,
+      4
+    ],
+    "final_size": [
+      32,
+      32
+    ]
+  },
+  "item_egg.png": {
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a single fresh chicken egg, warm cream shell with two simple shading tones, upright egg shape, bright highlight at top-left, clean dark brown outline. Inventory icon readable at 32x32, centered with generous transparent padding. No nest, no ground, no shadow.",
+    "raw_size": [
+      1266,
+      1242
+    ],
+    "crop": [
+      327,
+      288,
+      939,
+      1035
+    ],
+    "resized_subject": [
+      20,
+      24
+    ],
+    "placement": [
+      6,
+      4
+    ],
+    "final_size": [
+      32,
+      32
+    ]
+  },
+  "item_omelette.png": {
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nSubject: a folded golden-yellow omelette on one small cream ceramic plate, viewed top-down three-quarter, bright sunny yellow egg with warm orange fold shadow and cream highlights. Simple large pixel clusters readable at 32x32, whole plate centered with transparent margin, no utensils, no garnish, no additional objects.",
+    "raw_size": [
+      1265,
+      1243
+    ],
+    "crop": [
+      160,
+      210,
+      1094,
+      1078
+    ],
+    "resized_subject": [
+      24,
+      22
+    ],
+    "placement": [
+      4,
+      5
+    ],
+    "final_size": [
+      32,
+      32
+    ]
+  },
+  "item_grilled_fish.png": {
+    "prompt": "Style: cozy bright pixel art, inspired by Stardew Valley. Pixel grid 32x32 per tile.\nTop-down 3/4 view. Warm earthy palette: grass greens, soil browns, sunny yellow,\norange accents, tomato red highlights, cream and milk-brown for UI.\nClean 1px dark brown outline, flat soft shading with 2-3 tones per color, no anti-aliasing,\nno gradients, no blur. Transparent background. No text, no watermark, no border frame.\nSingle subject centered, consistent lighting from the top-left.\nUse case: precise-object-edit. Reference image is existing grilled fish icon. Redo same right-facing whole grilled fish on small wooden skewer, preserving silhouette and three grill marks. Make it BRIGHT high contrast: dominant sunny golden yellow and warm cream highlights, orange accents, minimal dark brown restricted to thin outline and three narrow grill marks. Avoid muddy brown body or heavy dark shading. As bright and vivid as ripe tomato inventory icon. Simplify large color clusters for clearly readable 32x32 icon. Single centered skewered fish, transparent background, no plate or ground.",
+    "raw_size": [
+      1254,
+      1254
+    ],
+    "crop": [
+      130,
+      427,
+      1130,
+      886
+    ],
+    "resized_subject": [
+      24,
+      11
+    ],
+    "placement": [
+      4,
+      10
+    ],
+    "final_size": [
+      32,
+      32
+    ]
+  }
+}
