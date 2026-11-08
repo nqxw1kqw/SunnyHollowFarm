@@ -50,24 +50,30 @@ void InventoryUI::render(Renderer& renderer, const Inventory& inventory) const {
     constexpr int WIN_Y = (Config::SCREEN_HEIGHT - WIN_H) / 2; // 85
 
     // Modal background & double border
-    renderer.drawRect(WIN_X, WIN_Y, WIN_W, WIN_H, SDL_Color{35, 27, 22, 252});
-    renderer.drawOutline(WIN_X, WIN_Y, WIN_W, WIN_H, SDL_Color{195, 160, 105, 255});
-    renderer.drawOutline(WIN_X + 2, WIN_Y + 2, WIN_W - 4, WIN_H - 4, SDL_Color{115, 85, 50, 255});
+    bool hasPanel = renderer.drawNineSlice("ui_panel.png", WIN_X, WIN_Y, WIN_W, WIN_H, 3, 3, 3, 3);
+    if (!hasPanel) {
+        renderer.drawRect(WIN_X, WIN_Y, WIN_W, WIN_H, SDL_Color{35, 27, 22, 252});
+        renderer.drawOutline(WIN_X, WIN_Y, WIN_W, WIN_H, SDL_Color{195, 160, 105, 255});
+        renderer.drawOutline(WIN_X + 2, WIN_Y + 2, WIN_W - 4, WIN_H - 4, SDL_Color{115, 85, 50, 255});
+    }
 
     // 3. Header bar: "INVENTORY" and Money Counter
-    BitmapFont::drawText(renderer, "INVENTORY", WIN_X + 18, WIN_Y + 12, SDL_Color{255, 230, 130, 255}, 2);
+    SDL_Color headerCol = hasPanel ? SDL_Color{60, 36, 22, 255} : SDL_Color{255, 230, 130, 255};
+    BitmapFont::drawText(renderer, "INVENTORY", WIN_X + 18, WIN_Y + 12, headerCol, 2);
 
     // Coin wallet display in top right of modal
     int coinX = WIN_X + WIN_W - 140;
     int coinY = WIN_Y + 12;
     renderer.drawRect(coinX, coinY, 12, 12, SDL_Color{255, 215, 40, 255});
     renderer.drawOutline(coinX, coinY, 12, 12, SDL_Color{195, 145, 20, 255});
-    BitmapFont::drawNumber(renderer, inventory.getMoney(), coinX + 16, coinY + 1, SDL_Color{255, 235, 140, 255}, 2);
+    SDL_Color coinTextCol = hasPanel ? SDL_Color{110, 75, 15, 255} : SDL_Color{255, 235, 140, 255};
+    BitmapFont::drawNumber(renderer, inventory.getMoney(), coinX + 16, coinY + 1, coinTextCol, 2);
     BitmapFont::drawText(renderer, "G", coinX + 16 + BitmapFont::getTextWidth(std::to_string(inventory.getMoney()), 2) + 4,
-                         coinY + 1, SDL_Color{255, 205, 50, 255}, 2);
+                         coinY + 1, hasPanel ? SDL_Color{140, 95, 20, 255} : SDL_Color{255, 205, 50, 255}, 2);
 
     // Separator line under header
-    renderer.drawLine(WIN_X + 10, WIN_Y + 32, WIN_X + WIN_W - 10, WIN_Y + 32, SDL_Color{115, 85, 50, 255});
+    renderer.drawLine(WIN_X + 10, WIN_Y + 32, WIN_X + WIN_W - 10, WIN_Y + 32,
+                      hasPanel ? SDL_Color{180, 140, 90, 255} : SDL_Color{115, 85, 50, 255});
 
     // 4. Slots grid
     constexpr int COLS = Config::INVENTORY_COLS;
@@ -94,6 +100,8 @@ void InventoryUI::render(Renderer& renderer, const Inventory& inventory) const {
         renderer.drawOutline(sx, sy, SLOT_SIZE, SLOT_SIZE, borderCol);
         if (isSelected) {
             renderer.drawOutline(sx - 1, sy - 1, SLOT_SIZE + 2, SLOT_SIZE + 2, SDL_Color{255, 245, 140, 200});
+            // Selection cursor indicator next to currently selected slot
+            renderer.drawSprite("ui_cursor.png", sx - 14, sy + 11, 20, 20);
         }
 
         // Draw item if slot is occupied
@@ -154,6 +162,7 @@ void InventoryUI::render(Renderer& renderer, const Inventory& inventory) const {
     }
 
     // 6. Navigation Controls Footer Hint
+    SDL_Color footerCol = hasPanel ? SDL_Color{110, 80, 50, 255} : SDL_Color{170, 145, 110, 255};
     BitmapFont::drawText(renderer, "[TAB / I / ESC] CLOSE   [ARROWS / WASD] SELECT",
-                         WIN_X + 38, WIN_Y + WIN_H - 18, SDL_Color{170, 145, 110, 255}, 1);
+                         WIN_X + 38, WIN_Y + WIN_H - 18, footerCol, 1);
 }

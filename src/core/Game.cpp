@@ -1,4 +1,5 @@
 #include "core/Game.h"
+#include "ui/BitmapFont.h"
 #include <iostream>
 #include <cassert>
 
@@ -73,6 +74,14 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
             {"building_stove.png", 32, 64},
             {"tile_tilled_watered.png", 32, 32},
             {"fx_sparkle.png", 32, 32},
+            {"ui_panel.png", 96, 96},
+            {"ui_button.png", 96, 32},
+            {"ui_button_hover.png", 96, 32},
+            {"ui_dialogue.png", 96, 48},
+            {"ui_cursor.png", 32, 32},
+            {"ui_shop_sign.png", 64, 32},
+            {"ui_cooking_icon.png", 32, 32},
+            {"ui_sleep_icon.png", 32, 32},
         };
         for (const auto& sprite : sprites) {
             SDL_Texture* texture = m_assets.getTexture(std::string("assets/sprites/") + sprite.filename,
@@ -642,6 +651,91 @@ void Game::render() {
 
     // 4. Render farmer player
     m_player.render(m_renderer);
+
+    // World interaction prompts (NPC dialogue, sleep, cooking)
+    if (!m_inventoryUI.isOpen() && !m_cookingUI.isOpen() && !m_shopUI.isOpen()) {
+        auto [tx, ty] = m_player.getTargetTile();
+        int promptX = 0, promptY = 0, promptW = 76, promptH = 24;
+        const char* promptText = nullptr;
+        const char* iconSprite = nullptr;
+        bool showPrompt = false;
+
+        if (m_location == Location::Farm) {
+            if ((tx == m_sellerNPC.getTileX() && ty == m_sellerNPC.getTileY()) ||
+                (tx >= 13 && tx <= 15 && ty == 1)) {
+                promptX = 14 * Map::TILE_SIZE - 22;
+                promptY = 2 * Map::TILE_SIZE - 28;
+                promptW = 76;
+                promptH = 24;
+                promptText = "[E] SHOP";
+                showPrompt = true;
+            } else if ((tx == m_buyerNPC.getTileX() && ty == m_buyerNPC.getTileY()) ||
+                       (tx >= 16 && tx <= 18 && ty == 1)) {
+                promptX = 17 * Map::TILE_SIZE - 22;
+                promptY = 2 * Map::TILE_SIZE - 28;
+                promptW = 76;
+                promptH = 24;
+                promptText = "[E] SHOP";
+                showPrompt = true;
+            } else if (m_map.inBounds(tx, ty) &&
+                       (m_map.getTile(tx, ty).getType() == TileType::Farmhouse || TimeSystem::isBedTile(tx, ty))) {
+                promptX = tx * Map::TILE_SIZE - 24;
+                promptY = ty * Map::TILE_SIZE - 28;
+                promptW = 80;
+                promptH = 24;
+                promptText = "SLEEP";
+                iconSprite = "ui_sleep_icon.png";
+                showPrompt = true;
+            } else if (m_map.inBounds(tx, ty) && m_map.getTile(tx, ty).getType() == TileType::Stove) {
+                promptX = 4 * Map::TILE_SIZE - 22;
+                promptY = 2 * Map::TILE_SIZE - 28;
+                promptW = 76;
+                promptH = 24;
+                promptText = "COOK";
+                iconSprite = "ui_cooking_icon.png";
+                showPrompt = true;
+            }
+        } else {
+            if (m_interiorMap.inBounds(tx, ty)) {
+                TileType type = m_interiorMap.getTile(tx, ty).getType();
+                if (type == TileType::Bed) {
+                    promptX = 6 * Map::TILE_SIZE - 24;
+                    promptY = 4 * Map::TILE_SIZE - 28;
+                    promptW = 80;
+                    promptH = 24;
+                    promptText = "SLEEP";
+                    iconSprite = "ui_sleep_icon.png";
+                    showPrompt = true;
+                } else if (type == TileType::Stove) {
+                    promptX = 11 * Map::TILE_SIZE - 22;
+                    promptY = 4 * Map::TILE_SIZE - 28;
+                    promptW = 76;
+                    promptH = 24;
+                    promptText = "COOK";
+                    iconSprite = "ui_cooking_icon.png";
+                    showPrompt = true;
+                }
+            }
+        }
+
+        if (showPrompt) {
+            bool hasDialogue = m_renderer.drawDialogue(promptX, promptY, promptW, promptH, true);
+            if (!hasDialogue) {
+                m_renderer.drawRect(promptX, promptY, promptW, promptH, SDL_Color{35, 27, 22, 240});
+                m_renderer.drawOutline(promptX, promptY, promptW, promptH, SDL_Color{195, 160, 105, 255});
+            }
+            int textX = promptX + 8;
+            if (iconSprite) {
+                m_renderer.drawSprite(iconSprite, promptX + 6, promptY + 3, 18, 18);
+                textX = promptX + 28;
+            } else {
+                int tw = BitmapFont::getTextWidth(promptText, 1);
+                textX = promptX + (promptW - tw) / 2;
+            }
+            SDL_Color textCol = hasDialogue ? SDL_Color{60, 36, 22, 255} : SDL_Color{255, 230, 130, 255};
+            BitmapFont::drawText(m_renderer, promptText, textX, promptY + 8, textCol, 1);
+        }
+    }
 
     // 5. Render HUD with Day Counter
     m_hud.render(m_renderer, m_inventory, m_player, m_timeSystem.getDay());

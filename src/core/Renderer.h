@@ -34,6 +34,10 @@ public:
     // Returns false when art is missing so callers can keep their placeholder.
     bool drawSprite(const std::string& filename, int x, int y, int w, int h,
                     const SDL_Rect* source = nullptr);
+    bool drawNineSlice(const std::string& filename, int x, int y, int w, int h,
+                       int left, int top, int right, int bottom,
+                       const SDL_Rect* sourceSubRect = nullptr);
+    bool drawDialogue(int x, int y, int w, int h, bool withTail = false);
 
     SDL_Renderer* getSDLRenderer() const { return m_renderer; }
 

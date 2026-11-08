@@ -402,4 +402,11 @@ void Map::render(Renderer& renderer) const {
             renderer.drawOutline(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{0, 0, 0, 25});
         }
     }
+
+    // Draw hanging wooden shop signs at the outdoor market stalls
+    if (getTile(13, 1).getType() == TileType::ShopStall) {
+        // Seller stall centered at x = 13*32 + 16 = 432, Buyer stall at x = 16*32 + 16 = 528
+        renderer.drawSprite("ui_shop_sign.png", 432, 14, 64, 32);
+        renderer.drawSprite("ui_shop_sign.png", 528, 14, 64, 32);
+    }
 }

@@ -217,7 +217,9 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     renderer.drawRect(DAY_PANEL_X, DAY_PANEL_Y, DAY_PANEL_W, DAY_PANEL_H, SDL_Color{25, 20, 18, 220});
     renderer.drawOutline(DAY_PANEL_X, DAY_PANEL_Y, DAY_PANEL_W, DAY_PANEL_H, SDL_Color{170, 140, 95, 255});
 
-    drawSunIcon(renderer, DAY_PANEL_X + 5, DAY_PANEL_Y + 10);
+    if (!renderer.drawSprite("ui_sleep_icon.png", DAY_PANEL_X + 4, DAY_PANEL_Y + 8, 20, 20)) {
+        drawSunIcon(renderer, DAY_PANEL_X + 5, DAY_PANEL_Y + 10);
+    }
     BitmapFont::drawText(renderer, "DAY", DAY_PANEL_X + 26, DAY_PANEL_Y + 8, SDL_Color{255, 225, 120, 255}, 1);
     BitmapFont::drawNumber(renderer, currentDay, DAY_PANEL_X + 26, DAY_PANEL_Y + 19, SDL_Color{255, 255, 255, 255}, 2);
 
@@ -248,9 +250,12 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
         constexpr int BANNER_X = (Config::SCREEN_WIDTH - BANNER_W) / 2;
         constexpr int BANNER_Y = 56;
 
-        renderer.drawRect(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, SDL_Color{35, 15, 15, 240});
-        renderer.drawOutline(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, SDL_Color{240, 60, 50, 255});
-        renderer.drawOutline(BANNER_X - 1, BANNER_Y - 1, BANNER_W + 2, BANNER_H + 2, SDL_Color{255, 160, 40, 180});
+        bool hasDialogue = const_cast<Renderer&>(renderer).drawDialogue(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, false);
+        if (!hasDialogue) {
+            renderer.drawRect(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, SDL_Color{35, 15, 15, 240});
+            renderer.drawOutline(BANNER_X, BANNER_Y, BANNER_W, BANNER_H, SDL_Color{240, 60, 50, 255});
+            renderer.drawOutline(BANNER_X - 1, BANNER_Y - 1, BANNER_W + 2, BANNER_H + 2, SDL_Color{255, 160, 40, 180});
+        }
 
         // Warning '!' badge
         renderer.drawRect(BANNER_X + 10, BANNER_Y + 7, 20, 22, SDL_Color{210, 40, 30, 255});
@@ -260,6 +265,7 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
         // Feedback message text
         int textW = BitmapFont::getTextWidth(m_feedbackMessage, 2);
         int textX = BANNER_X + 38 + std::max(0, (BANNER_W - 48 - textW) / 2);
-        BitmapFont::drawText(renderer, m_feedbackMessage, textX, BANNER_Y + 12, SDL_Color{255, 240, 120, 255}, 2);
+        SDL_Color textCol = hasDialogue ? SDL_Color{60, 35, 25, 255} : SDL_Color{255, 240, 120, 255};
+        BitmapFont::drawText(renderer, m_feedbackMessage, textX, BANNER_Y + 12, textCol, 2);
     }
 }
