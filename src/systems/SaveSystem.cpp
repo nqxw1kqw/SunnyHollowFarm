@@ -272,6 +272,7 @@ bool SaveSystem::save(const Game& game, const std::string& filepath) {
     ss << "{\n";
     ss << "  \"version\": 1,\n";
     ss << "  \"day\": " << game.getTimeSystem().getDay() << ",\n";
+    ss << "  \"timeOfDay\": " << game.getTimeSystem().getTimeOfDay() << ",\n";
     ss << "  \"wallet\": " << game.getInventory().getMoney() << ",\n";
     ss << "  \"energy\": " << game.getPlayer().getEnergy() << ",\n";
     ss << "  \"muted\": " << (game.getAudioSystem().isMuted() ? "true" : "false") << ",\n";
@@ -383,9 +384,14 @@ bool SaveSystem::load(Game& game, const std::string& filepath) {
         return false;
     }
 
-    // 1. Restore day
+    // 1. Restore day & timeOfDay
     if (const JsonValue* dayVal = root.get("day")) {
         game.getTimeSystem().setDay(dayVal->asInt(1), false);
+    }
+    if (const JsonValue* timeVal = root.get("timeOfDay")) {
+        game.getTimeSystem().setTimeOfDay(timeVal->asInt(TimeSystem::START_TIME));
+    } else {
+        game.getTimeSystem().setTimeOfDay(TimeSystem::START_TIME);
     }
 
     // 2. Restore weather

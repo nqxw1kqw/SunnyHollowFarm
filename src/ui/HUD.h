@@ -37,8 +37,10 @@ public:
         return -1;
     }
 
-    // Renders all HUD components including day counter, weather indicator, and bottom hotbar.
-    void render(Renderer& renderer, const Inventory& inventory, const Player& player, int currentDay = 1, Weather weather = Weather::Sunny) const;
+    // Renders all HUD components including clock, day counter, weather indicator, and bottom hotbar.
+    void render(Renderer& renderer, const Inventory& inventory, const Player& player,
+                int currentDay = 1, Weather weather = Weather::Sunny,
+                const std::string& timeString = "06:00 AM", bool isNight = false) const;
 
     // Renders only the top feedback banner (if active)
     void renderFeedbackBanner(Renderer& renderer) const;
@@ -53,6 +55,7 @@ private:
     void drawEnergyIcon(Renderer& renderer, int x, int y) const;
     void drawSunIcon(Renderer& renderer, int x, int y) const;
     void drawRainIcon(Renderer& renderer, int x, int y) const;
+    void drawMoonIcon(Renderer& renderer, int x, int y) const;
 
     std::string m_feedbackMessage;
     float m_feedbackTimer = 0.0f;

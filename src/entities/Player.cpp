@@ -68,6 +68,8 @@ void Player::update(float dt, const Input& input, const Map& map) {
     if (leftHeld) moveX -= 1.0f;
     if (rightHeld) moveX += 1.0f;
 
+    const bool sprintHeld = input.isKeyDown(SDL_SCANCODE_LSHIFT) || input.isKeyDown(SDL_SCANCODE_RSHIFT);
+    m_isSprinting = sprintHeld && (moveX != 0.0f || moveY != 0.0f);
     m_isMoving = (moveX != 0.0f || moveY != 0.0f);
 
     if (m_isMoving) {
@@ -95,32 +97,54 @@ void Player::update(float dt, const Input& input, const Map& map) {
             moveY *= INV_SQRT2;
         }
 
-        const float deltaX = moveX * m_speed * dt;
-        const float deltaY = moveY * m_speed * dt;
+        // Sprint boost: 1.45x movement speed when holding Shift
+        const float activeSpeed = m_isSprinting ? (MOVE_SPEED * 1.45f) : MOVE_SPEED;
+        const float deltaX = moveX * activeSpeed * dt;
+        const float deltaY = moveY * activeSpeed * dt;
 
         // Collision box for player feet (20w x 24h centered horizontally, placed at feet)
-        // X-axis collision check & sliding
+        // X-axis collision check & Stardew Valley corner-sliding easing
         const float newX = m_x + deltaX;
         if (map.isAreaWalkable(newX + COLLISION_OFFSET_X, m_y + COLLISION_OFFSET_Y, COLLISION_WIDTH, COLLISION_HEIGHT)) {
             m_x = newX;
+        } else if (moveY == 0.0f) {
+            // Corner slide easing: nudge smoothly around obstacle edges
+            for (float offset : {-3.0f, 3.0f, -5.0f, 5.0f}) {
+                if (map.isAreaWalkable(newX + COLLISION_OFFSET_X, m_y + COLLISION_OFFSET_Y + offset, COLLISION_WIDTH, COLLISION_HEIGHT)) {
+                    m_x = newX;
+                    m_y += offset * dt * 10.0f;
+                    break;
+                }
+            }
         }
 
-        // Y-axis collision check & sliding
+        // Y-axis collision check & Stardew Valley corner-sliding easing
         const float newY = m_y + deltaY;
         if (map.isAreaWalkable(m_x + COLLISION_OFFSET_X, newY + COLLISION_OFFSET_Y, COLLISION_WIDTH, COLLISION_HEIGHT)) {
             m_y = newY;
+        } else if (moveX == 0.0f) {
+            // Corner slide easing: nudge smoothly around obstacle edges
+            for (float offset : {-3.0f, 3.0f, -5.0f, 5.0f}) {
+                if (map.isAreaWalkable(m_x + COLLISION_OFFSET_X + offset, newY + COLLISION_OFFSET_Y, COLLISION_WIDTH, COLLISION_HEIGHT)) {
+                    m_y = newY;
+                    m_x += offset * dt * 10.0f;
+                    break;
+                }
+            }
         }
 
-        // Advance walk animation cycle at steady ~8 fps rate (0.125s per frame)
+        // Advance walk animation cycle (faster step frequency during sprint)
+        const float stepInterval = m_isSprinting ? 0.085f : 0.125f;
         m_animTimer += dt;
-        while (m_animTimer >= 0.125f) {
-            m_animTimer -= 0.125f;
+        while (m_animTimer >= stepInterval) {
+            m_animTimer -= stepInterval;
             m_animStep = (m_animStep + 1) % 4; // 0: neutral, 1: left, 2: neutral, 3: right
         }
     } else {
         // Idle pose when not moving: show standing frame (neutral)
         m_animStep = 0;
         m_animTimer = 0.0f;
+        m_isSprinting = false;
     }
 }
 

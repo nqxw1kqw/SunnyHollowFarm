@@ -123,8 +123,21 @@ void HUD::drawRainIcon(Renderer& renderer, int x, int y) const {
     renderer.drawLine(x + 13, y + 12, x + 12, y + 15, dropColor);
 }
 
-void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& player, int currentDay, Weather weather) const {
-    // --- TOP HUD: Wallet, Energy, Day, Weather, and Bag Hint ---
+void HUD::drawMoonIcon(Renderer& renderer, int x, int y) const {
+    // Crescent silver moon with night star
+    SDL_Color moonColor{230, 240, 255, 255};
+    renderer.drawRect(x + 4, y + 2, 8, 12, moonColor);
+    renderer.drawRect(x + 2, y + 4, 3, 8, moonColor);
+    renderer.drawRect(x + 1, y + 6, 2, 4, moonColor);
+    // Dark cutout for crescent curve
+    renderer.drawRect(x + 6, y + 4, 6, 8, SDL_Color{25, 20, 18, 255});
+    // Tiny starry glint
+    renderer.drawRect(x + 13, y + 3, 2, 2, SDL_Color{255, 255, 210, 255});
+}
+
+void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& player,
+                 int currentDay, Weather weather, const std::string& timeString, bool isNight) const {
+    // --- TOP HUD: Wallet, Energy, Day, Weather, Clock, and Bag Hint ---
 
     // 1. Money / Wallet counter panel (top-left)
     constexpr int COIN_PANEL_X = 14;
@@ -219,8 +232,26 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
         BitmapFont::drawText(renderer, "SUN", WEATH_PANEL_X + 14, WEATH_PANEL_Y + 24, SDL_Color{255, 225, 120, 255}, 1);
     }
 
+    // 3c. Clock Time Panel (Stardew Valley 6:00 AM - 2:00 AM system)
+    constexpr int CLOCK_PANEL_X = 402;
+    constexpr int CLOCK_PANEL_Y = 8;
+    constexpr int CLOCK_PANEL_W = 118;
+    constexpr int CLOCK_PANEL_H = 38;
+
+    renderer.drawRect(CLOCK_PANEL_X, CLOCK_PANEL_Y, CLOCK_PANEL_W, CLOCK_PANEL_H, SDL_Color{25, 20, 18, 220});
+    renderer.drawOutline(CLOCK_PANEL_X, CLOCK_PANEL_Y, CLOCK_PANEL_W, CLOCK_PANEL_H, SDL_Color{170, 140, 95, 255});
+
+    if (isNight) {
+        drawMoonIcon(renderer, CLOCK_PANEL_X + 6, CLOCK_PANEL_Y + 10);
+    } else {
+        drawSunIcon(renderer, CLOCK_PANEL_X + 6, CLOCK_PANEL_Y + 10);
+    }
+    BitmapFont::drawText(renderer, "TIME", CLOCK_PANEL_X + 28, CLOCK_PANEL_Y + 7, SDL_Color{255, 225, 120, 255}, 1);
+    BitmapFont::drawText(renderer, timeString, CLOCK_PANEL_X + 28, CLOCK_PANEL_Y + 19,
+                         isNight ? SDL_Color{180, 220, 255, 255} : SDL_Color{255, 255, 255, 255}, 1);
+
     // 4. Inventory toggle key hint & Harvested produce panel (top-right)
-    constexpr int PROD_W = 146;
+    constexpr int PROD_W = 166;
     constexpr int PROD_H = 38;
     constexpr int PROD_X = Config::SCREEN_WIDTH - PROD_W - 14;
     constexpr int PROD_Y = 8;
@@ -228,11 +259,12 @@ void HUD::render(Renderer& renderer, const Inventory& inventory, const Player& p
     renderer.drawRect(PROD_X, PROD_Y, PROD_W, PROD_H, SDL_Color{25, 20, 18, 220});
     renderer.drawOutline(PROD_X, PROD_Y, PROD_W, PROD_H, SDL_Color{170, 140, 95, 255});
 
-    BitmapFont::drawText(renderer, "TAB", PROD_X + 8, PROD_Y + 9, SDL_Color{255, 225, 120, 255}, 1);
-    BitmapFont::drawText(renderer, "BAG", PROD_X + 8, PROD_Y + 21, SDL_Color{220, 210, 190, 255}, 1);
+    BitmapFont::drawText(renderer, "TAB:BAG", PROD_X + 8, PROD_Y + 8, SDL_Color{255, 225, 120, 255}, 1);
+    BitmapFont::drawText(renderer, "SHIFT:RUN", PROD_X + 8, PROD_Y + 21,
+                         player.isSprinting() ? SDL_Color{255, 215, 60, 255} : SDL_Color{190, 180, 165, 255}, 1);
 
-    int tomX = PROD_X + 48;
-    int tomY = PROD_Y + 9;
+    int tomX = PROD_X + 76;
+    int tomY = PROD_Y + 8;
     drawItemPlaceholder(const_cast<Renderer&>(renderer), ItemType::Tomato, tomX, tomY, 22);
 
     BitmapFont::drawChar(renderer, 'X', tomX + 26, tomY + 6, SDL_Color{230, 215, 180, 255}, 2);

@@ -181,6 +181,9 @@ bool ShopSystem::buyItem(ItemType item, int count, Inventory& inventory, HUD* hu
         if (hud) {
             hud->showFeedback("BOUGHT: CHICKEN (-" + std::to_string(unitPrice) + "G)");
         }
+        if (m_onBuyCallback) {
+            m_onBuyCallback(unitPrice);
+        }
         return true;
     }
 
@@ -217,6 +220,9 @@ bool ShopSystem::buyItem(ItemType item, int count, Inventory& inventory, HUD* hu
         std::string msg = "BOUGHT: " + itemTypeToString(item) + " (-" + std::to_string(totalCost) + "G)";
         std::transform(msg.begin(), msg.end(), msg.begin(), ::toupper);
         hud->showFeedback(msg);
+    }
+    if (m_onBuyCallback) {
+        m_onBuyCallback(totalCost);
     }
 
     return true;

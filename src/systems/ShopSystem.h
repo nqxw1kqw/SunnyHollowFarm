@@ -22,6 +22,7 @@ public:
     using ChickenCountFn = std::function<int()>;
     using BuyChickenFn = std::function<bool()>;
     using OnSellCallback = std::function<void(int goldEarned)>;
+    using OnBuyCallback = std::function<void(int goldSpent)>;
 
     ShopSystem() = default;
 
@@ -32,6 +33,9 @@ public:
     }
     void setOnSellCallback(OnSellCallback cb) {
         m_onSellCallback = cb;
+    }
+    void setOnBuyCallback(OnBuyCallback cb) {
+        m_onBuyCallback = cb;
     }
     int getChickenCount() const {
         return m_chickenCountFn ? m_chickenCountFn() : 0;
@@ -65,4 +69,5 @@ private:
     ChickenCountFn m_chickenCountFn;
     BuyChickenFn m_buyChickenFn;
     OnSellCallback m_onSellCallback;
+    OnBuyCallback m_onBuyCallback;
 };

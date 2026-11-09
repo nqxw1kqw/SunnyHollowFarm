@@ -121,22 +121,39 @@ bool Game::init(const char* title, int width, int height, bool smokeTestMode, bo
     m_timeSystem.setOnSleepCallback([this]() {
         saveGame();
     });
+    m_timeSystem.setOnPassOutCallback([this]() {
+        m_location = Location::FarmhouseInterior;
+        m_player.placeAtTileCenter(6, 4);
+        m_player.setFacing(Direction::Down);
+        saveGame();
+    });
 
-    // Wire lifetime statistics increment callbacks
+    // Wire shop and lifetime statistics increment callbacks with tactile effects
+    m_shopSystem.setOnBuyCallback([this](int goldSpent) {
+        spawnFloatingText(m_player.getX() + 8.0f, m_player.getY() - 16.0f, "-" + std::to_string(goldSpent) + "G", SDL_Color{255, 120, 100, 255});
+    });
     m_shopSystem.setOnSellCallback([this](int goldEarned) {
         m_statsSystem.recordSale(goldEarned, &m_hud);
+        spawnFloatingText(m_player.getX() + 8.0f, m_player.getY() - 16.0f, "+" + std::to_string(goldEarned) + "G", SDL_Color{100, 255, 120, 255});
+        spawnSparkleParticles(m_player.getX() + 8.0f, m_player.getY() - 8.0f);
     });
     m_farmSystem.setOnHarvestCallback([this](int count) {
         m_statsSystem.recordHarvest(count);
     });
     m_fishingSystem.setOnCatchFishCallback([this](int count) {
         m_statsSystem.recordCatchFish(count);
+        spawnSparkleParticles(m_player.getX() + 8.0f, m_player.getY() - 8.0f);
+        spawnFloatingText(m_player.getX() + 8.0f, m_player.getY() - 16.0f, "+FISH!", SDL_Color{100, 220, 255, 255});
     });
     m_chickenSystem.setOnEggCollectedCallback([this](int count) {
         m_statsSystem.recordEggCollected(count);
+        spawnSparkleParticles(m_player.getX() + 8.0f, m_player.getY() - 8.0f);
+        spawnFloatingText(m_player.getX() + 8.0f, m_player.getY() - 16.0f, "+EGG", SDL_Color{255, 230, 120, 255});
     });
     m_cookingSystem.setOnCookSuccessCallback([this](int count) {
         m_statsSystem.recordDishCooked(count);
+        spawnSparkleParticles(m_player.getX() + 8.0f, m_player.getY() - 8.0f);
+        spawnFloatingText(m_player.getX() + 8.0f, m_player.getY() - 16.0f, "+COOKED!", SDL_Color{255, 200, 100, 255});
     });
 
     initRainParticles();
@@ -511,9 +528,11 @@ bool Game::interactAt(int tx, int ty) {
     int currTy = static_cast<int>(std::round(m_player.getY() / static_cast<float>(Map::TILE_SIZE)));
     if (m_chickenSystem.hasEggAt(tx, ty)) {
         m_chickenSystem.collectEgg(tx, ty, m_inventory, &m_hud, &m_audio);
+        spawnSparkleParticles(tx * 32.0f + 16.0f, ty * 32.0f + 16.0f);
         return true;
     } else if (m_chickenSystem.hasEggAt(currTx, currTy)) {
         m_chickenSystem.collectEgg(currTx, currTy, m_inventory, &m_hud, &m_audio);
+        spawnSparkleParticles(currTx * 32.0f + 16.0f, currTy * 32.0f + 16.0f);
         return true;
     }
 
@@ -527,7 +546,22 @@ bool Game::interactAt(int tx, int ty) {
         return false;
     }
 
-    return m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud, &m_audio);
+    Crop* beforeCrop = m_farmSystem.findCrop(tx, ty);
+    bool matureBefore = beforeCrop && beforeCrop->isMature();
+    TileType beforeType = curType;
+
+    bool result = m_farmSystem.interact(tx, ty, m_map, m_inventory, m_player, &m_hud, &m_audio);
+    if (result) {
+        if (matureBefore) {
+            spawnSparkleParticles(tx * 32.0f + 16.0f, ty * 32.0f + 16.0f);
+            spawnFloatingText(tx * 32.0f + 8.0f, ty * 32.0f - 10.0f, "+HARVEST", SDL_Color{120, 255, 140, 255});
+        } else if (m_inventory.activeTool == ToolType::Hoe && beforeType == TileType::Dirt) {
+            spawnDirtParticles(tx * 32.0f + 16.0f, ty * 32.0f + 16.0f);
+        } else if (m_inventory.activeTool == ToolType::WateringCan && beforeType == TileType::TilledSoil) {
+            spawnWaterParticles(tx * 32.0f + 16.0f, ty * 32.0f + 16.0f);
+        }
+    }
+    return result;
 }
 
 void Game::handleInput() {
@@ -804,6 +838,11 @@ void Game::update(float dt) {
     if (m_location == Location::Farm) {
         m_chickenSystem.update(dt);
     }
+
+    // Time of day update (700ms/minute, pausing during modal dialogs)
+    bool isModalOpen = m_inventoryUI.isOpen() || m_cookingUI.isOpen() || m_shopUI.isOpen();
+    m_timeSystem.update(dt, isModalOpen, m_player, m_farmSystem, m_map, &m_hud);
+    updateEffects(dt);
 
     // Fishing system update & safety checks
     if (m_fishingSystem.isFishing()) {
@@ -2261,6 +2300,9 @@ void Game::render() {
         }
     }
 
+    // Tactile action particles and floating numbers (drawn in world coordinates)
+    renderWorldEffects();
+
     // Reset renderer offset for screen-space HUD and UI overlays
     m_renderer.setOffset(0, 0);
 
@@ -2269,8 +2311,15 @@ void Game::render() {
         renderRainParticles();
     }
 
-    // 5. Render HUD with Day Counter & Weather Indicator
-    m_hud.render(m_renderer, m_inventory, m_player, m_timeSystem.getDay(), m_timeSystem.getWeather());
+    // Ambient Lighting Overlay (Stardew Valley dynamic sunrise / daytime / golden sunset / moonlight indigo tinting)
+    SDL_Color ambient = m_timeSystem.getAmbientLighting(m_location == Location::Farm);
+    if (ambient.a > 0) {
+        m_renderer.drawRect(0, 0, Config::SCREEN_WIDTH, Config::SCREEN_HEIGHT, ambient);
+    }
+
+    // 5. Render HUD with Day Counter, Weather Indicator & Live Clock
+    m_hud.render(m_renderer, m_inventory, m_player, m_timeSystem.getDay(), m_timeSystem.getWeather(),
+                 m_timeSystem.getTimeString(), m_timeSystem.isNight());
 
     // 6. Render Inventory Grid modal when open
     if (m_inventoryUI.isOpen()) {
@@ -2910,5 +2959,117 @@ void Game::updatePlaytest(float dt) {
         std::cout << "[PASS] Full playthrough playtest and farmhouse interior verifications passed cleanly across "
                   << m_timeSystem.getDay() << " in-game days!" << std::endl;
         m_isRunning = false;
+    }
+}
+
+void Game::spawnDirtParticles(float wx, float wy) {
+    static const SDL_Color dirtColors[] = {
+        {139, 90, 43, 255},
+        {160, 110, 60, 255},
+        {110, 70, 30, 255},
+        {180, 130, 75, 255}
+    };
+    for (int i = 0; i < 7; ++i) {
+        WorldParticle p;
+        p.x = wx + static_cast<float>((std::rand() % 16) - 8);
+        p.y = wy + static_cast<float>((std::rand() % 16) - 8);
+        p.vx = static_cast<float>((std::rand() % 90) - 45);
+        p.vy = -static_cast<float>(40 + (std::rand() % 60));
+        p.life = 0.0f;
+        p.maxLife = 0.35f + static_cast<float>(std::rand() % 20) * 0.01f;
+        p.color = dirtColors[std::rand() % 4];
+        p.size = 2 + (std::rand() % 2);
+        m_worldParticles.push_back(p);
+    }
+}
+
+void Game::spawnWaterParticles(float wx, float wy) {
+    static const SDL_Color waterColors[] = {
+        {120, 190, 255, 255},
+        {160, 220, 255, 255},
+        {80, 160, 240, 255},
+        {200, 240, 255, 255}
+    };
+    for (int i = 0; i < 8; ++i) {
+        WorldParticle p;
+        p.x = wx + static_cast<float>((std::rand() % 16) - 8);
+        p.y = wy + static_cast<float>((std::rand() % 16) - 8);
+        p.vx = static_cast<float>((std::rand() % 80) - 40);
+        p.vy = -static_cast<float>(50 + (std::rand() % 70));
+        p.life = 0.0f;
+        p.maxLife = 0.30f + static_cast<float>(std::rand() % 20) * 0.01f;
+        p.color = waterColors[std::rand() % 4];
+        p.size = 2 + (std::rand() % 2);
+        m_worldParticles.push_back(p);
+    }
+}
+
+void Game::spawnSparkleParticles(float wx, float wy) {
+    static const SDL_Color sparkleColors[] = {
+        {255, 235, 100, 255},
+        {255, 255, 180, 255},
+        {255, 210, 80, 255},
+        {240, 255, 255, 255}
+    };
+    for (int i = 0; i < 8; ++i) {
+        WorldParticle p;
+        p.x = wx + static_cast<float>((std::rand() % 20) - 10);
+        p.y = wy + static_cast<float>((std::rand() % 20) - 10);
+        p.vx = static_cast<float>((std::rand() % 70) - 35);
+        p.vy = -static_cast<float>(30 + (std::rand() % 50));
+        p.life = 0.0f;
+        p.maxLife = 0.45f + static_cast<float>(std::rand() % 25) * 0.01f;
+        p.color = sparkleColors[std::rand() % 4];
+        p.size = 2 + (std::rand() % 2);
+        m_worldParticles.push_back(p);
+    }
+}
+
+void Game::spawnFloatingText(float wx, float wy, const std::string& text, SDL_Color color) {
+    FloatingText ft;
+    ft.x = wx;
+    ft.y = wy;
+    ft.vy = -35.0f;
+    ft.life = 0.0f;
+    ft.maxLife = 1.1f;
+    ft.text = text;
+    ft.color = color;
+    m_floatingTexts.push_back(ft);
+}
+
+void Game::updateEffects(float dt) {
+    // Update world particles
+    for (auto it = m_worldParticles.begin(); it != m_worldParticles.end();) {
+        it->x += it->vx * dt;
+        it->y += it->vy * dt;
+        it->vy += 220.0f * dt; // gravity
+        it->life += dt;
+        if (it->life >= it->maxLife) {
+            it = m_worldParticles.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    // Update floating texts
+    for (auto it = m_floatingTexts.begin(); it != m_floatingTexts.end();) {
+        it->y += it->vy * dt;
+        it->life += dt;
+        if (it->life >= it->maxLife) {
+            it = m_floatingTexts.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void Game::renderWorldEffects() {
+    for (const auto& p : m_worldParticles) {
+        m_renderer.drawRect(static_cast<int>(p.x), static_cast<int>(p.y), p.size, p.size, p.color);
+    }
+    for (const auto& ft : m_floatingTexts) {
+        // Outline shadow for clarity
+        BitmapFont::drawText(m_renderer, ft.text, static_cast<int>(ft.x) + 1, static_cast<int>(ft.y) + 1, SDL_Color{0, 0, 0, 220}, 1);
+        BitmapFont::drawText(m_renderer, ft.text, static_cast<int>(ft.x), static_cast<int>(ft.y), ft.color, 1);
     }
 }

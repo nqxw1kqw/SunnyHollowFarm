@@ -36,6 +36,7 @@ public:
     Direction getFacing() const { return m_facing; }
     void setFacing(Direction facing) { m_facing = facing; }
     bool isMoving() const { return m_isMoving; }
+    bool isSprinting() const { return m_isSprinting; }
     int getWalkFrameIndex() const { return m_animStep; }
     int getAnimStep() const { return m_animStep; }
 
@@ -70,6 +71,7 @@ private:
 
     Direction m_facing = Direction::Down;
     bool m_isMoving = false;
+    bool m_isSprinting = false;
 
     // Walk animation variables
     float m_animTimer = 0.0f;

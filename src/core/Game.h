@@ -202,4 +202,35 @@ private:
     void initRainParticles();
     void updateRainParticles(float dt);
     void renderRainParticles();
+
+    // Tactile action particle effects (Stardew Valley juiciness)
+    struct WorldParticle {
+        float x = 0.0f;
+        float y = 0.0f;
+        float vx = 0.0f;
+        float vy = 0.0f;
+        float life = 0.0f;
+        float maxLife = 0.4f;
+        SDL_Color color{200, 200, 200, 255};
+        int size = 3;
+    };
+    std::vector<WorldParticle> m_worldParticles;
+
+    struct FloatingText {
+        float x = 0.0f;
+        float y = 0.0f;
+        float vy = -35.0f;
+        float life = 0.0f;
+        float maxLife = 1.2f;
+        std::string text;
+        SDL_Color color{255, 230, 80, 255};
+    };
+    std::vector<FloatingText> m_floatingTexts;
+
+    void spawnDirtParticles(float wx, float wy);
+    void spawnWaterParticles(float wx, float wy);
+    void spawnSparkleParticles(float wx, float wy);
+    void spawnFloatingText(float wx, float wy, const std::string& text, SDL_Color color = SDL_Color{255, 230, 80, 255});
+    void updateEffects(float dt);
+    void renderWorldEffects();
 };
