@@ -2059,10 +2059,14 @@ void Game::render() {
     m_renderer.clear(SDL_Color{20, 20, 20, 255});
 
     if (m_gameState == GameState::Title) {
-        // Fill full screen background with grass tiles
+        // Fill full screen background with varied lush grass tiles
         for (int gy = 0; gy < Config::SCREEN_HEIGHT; gy += Map::TILE_SIZE) {
             for (int gx = 0; gx < Config::SCREEN_WIDTH; gx += Map::TILE_SIZE) {
-                if (!m_renderer.drawSprite("tile_grass_0.png", gx, gy, Map::TILE_SIZE, Map::TILE_SIZE)) {
+                int col = gx / Map::TILE_SIZE;
+                int row = gy / Map::TILE_SIZE;
+                int v = ((col * 7 + row * 13 + (col ^ row)) & 0x7FFFFFFF) % 8;
+                std::string sprite = "tile_grass_" + std::to_string(v) + ".png";
+                if (!m_renderer.drawSprite(sprite, gx, gy, Map::TILE_SIZE, Map::TILE_SIZE)) {
                     m_renderer.drawRect(gx, gy, Map::TILE_SIZE, Map::TILE_SIZE, SDL_Color{85, 140, 50, 255});
                 }
             }
@@ -2081,14 +2085,24 @@ void Game::render() {
     }
 
     if (m_location == Location::Farm) {
-        // Fill full screen with lush grass tiles
+        // Fill full screen with varied lush grass tiles (clovers, wildflowers, grass tufts)
         for (int gy = 0; gy < Config::SCREEN_HEIGHT; gy += Map::TILE_SIZE) {
             for (int gx = 0; gx < Config::SCREEN_WIDTH; gx += Map::TILE_SIZE) {
-                if (!m_renderer.drawSprite("tile_grass_0.png", gx, gy, Map::TILE_SIZE, Map::TILE_SIZE)) {
+                int col = gx / Map::TILE_SIZE;
+                int row = gy / Map::TILE_SIZE;
+                int v = ((col * 7 + row * 13 + (col ^ row)) & 0x7FFFFFFF) % 8;
+                std::string sprite = "tile_grass_" + std::to_string(v) + ".png";
+                if (!m_renderer.drawSprite(sprite, gx, gy, Map::TILE_SIZE, Map::TILE_SIZE)) {
                     m_renderer.drawRect(gx, gy, Map::TILE_SIZE, Map::TILE_SIZE, SDL_Color{85, 140, 50, 255});
                 }
             }
         }
+
+        // Soft peripheral vignette shading outside the farm boundary
+        m_renderer.drawRect(0, 0, WORLD_OFFSET_X, Config::SCREEN_HEIGHT, SDL_Color{10, 25, 10, 35});
+        m_renderer.drawRect(WORLD_OFFSET_X + Map::WIDTH * Map::TILE_SIZE, 0, WORLD_OFFSET_X, Config::SCREEN_HEIGHT, SDL_Color{10, 25, 10, 35});
+        m_renderer.drawRect(WORLD_OFFSET_X, 0, Map::WIDTH * Map::TILE_SIZE, WORLD_OFFSET_Y, SDL_Color{10, 25, 10, 35});
+        m_renderer.drawRect(WORLD_OFFSET_X, WORLD_OFFSET_Y + Map::HEIGHT * Map::TILE_SIZE, Map::WIDTH * Map::TILE_SIZE, WORLD_OFFSET_Y, SDL_Color{10, 25, 10, 35});
 
         m_renderer.setOffset(WORLD_OFFSET_X, WORLD_OFFSET_Y);
 
