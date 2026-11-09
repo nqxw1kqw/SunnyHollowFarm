@@ -125,60 +125,66 @@ void Player::update(float dt, const Input& input, const Map& map) {
 }
 
 void Player::render(Renderer& renderer) const {
-    // 1. Draw animated player placeholder
     const int px = static_cast<int>(m_x);
     const int py = static_cast<int>(m_y);
 
-    const int frames[] = {0, 1, 0, 2};
-    const SDL_Rect source{frames[m_animStep] * 32, static_cast<int>(m_facing) * 32, 32, 32};
-    if (renderer.drawSprite("player_sheet.png", px, py, 32, 32, &source)) return;
+    // Scale up Player to 48x48 (1.5x) matching NPCs and breaking out of 1-block grid constraint
+    constexpr int PLAYER_WIDTH = 48;
+    constexpr int PLAYER_HEIGHT = 48;
+    const int renderX = px + (Map::TILE_SIZE - PLAYER_WIDTH) / 2; // px - 8
+    const int renderY = (py + Map::TILE_SIZE) - PLAYER_HEIGHT;     // py - 16
 
     // Subtle head bob during walking steps
-    const int bob = (m_isMoving && (m_animStep == 1 || m_animStep == 3)) ? -1 : 0;
+    const int bob = (m_isMoving && (m_animStep == 1 || m_animStep == 3)) ? -2 : 0;
 
+    // Ground entity drop shadow anchored at player's feet
+    renderer.drawRect(px + 1, py + 24, 30, 6, SDL_Color{20, 20, 20, 95});
+    renderer.drawRect(px + 4, py + 25, 24, 4, SDL_Color{10, 10, 10, 65});
+
+    const int frames[] = {0, 1, 0, 2};
+    const SDL_Rect source{frames[m_animStep] * 32, static_cast<int>(m_facing) * 32, 32, 32};
+    if (renderer.drawSprite("player_sheet.png", renderX, renderY + bob, PLAYER_WIDTH, PLAYER_HEIGHT, &source)) return;
+
+    // High quality procedural player fallback (scaled 48x48)
     // Straw Hat (yellow)
-    renderer.drawRect(px + 6, py + 2 + bob, 20, 7, SDL_Color{225, 195, 75, 255});
-    renderer.drawRect(px + 4, py + 7 + bob, 24, 2, SDL_Color{205, 175, 60, 255}); // Hat brim
-    renderer.drawRect(px + 7, py + 6 + bob, 18, 2, SDL_Color{140, 70, 30, 255});  // Hat ribbon band
+    renderer.drawRect(renderX + 9, renderY + 3 + bob, 30, 10, SDL_Color{225, 195, 75, 255});
+    renderer.drawRect(renderX + 6, renderY + 10 + bob, 36, 4, SDL_Color{205, 175, 60, 255}); // Hat brim
+    renderer.drawRect(renderX + 10, renderY + 9 + bob, 28, 3, SDL_Color{140, 70, 30, 255});  // Hat ribbon band
 
     // Face / Head
-    renderer.drawRect(px + 9, py + 9 + bob, 14, 7, SDL_Color{250, 205, 160, 255});
+    renderer.drawRect(renderX + 14, renderY + 14 + bob, 20, 10, SDL_Color{250, 205, 160, 255});
 
     // Eyes / Hair depending on direction
     if (m_facing == Direction::Down) {
-        renderer.drawRect(px + 11, py + 12 + bob, 2, 2, SDL_Color{40, 25, 20, 255});
-        renderer.drawRect(px + 18, py + 12 + bob, 2, 2, SDL_Color{40, 25, 20, 255});
+        renderer.drawRect(renderX + 17, renderY + 18 + bob, 3, 3, SDL_Color{40, 25, 20, 255});
+        renderer.drawRect(renderX + 27, renderY + 18 + bob, 3, 3, SDL_Color{40, 25, 20, 255});
     } else if (m_facing == Direction::Up) {
         // Back of hair visible
-        renderer.drawRect(px + 9, py + 9 + bob, 14, 5, SDL_Color{90, 50, 25, 255});
+        renderer.drawRect(renderX + 14, renderY + 14 + bob, 20, 8, SDL_Color{90, 50, 25, 255});
     } else if (m_facing == Direction::Left) {
-        renderer.drawRect(px + 10, py + 12 + bob, 2, 2, SDL_Color{40, 25, 20, 255});
+        renderer.drawRect(renderX + 15, renderY + 18 + bob, 3, 3, SDL_Color{40, 25, 20, 255});
     } else if (m_facing == Direction::Right) {
-        renderer.drawRect(px + 19, py + 12 + bob, 2, 2, SDL_Color{40, 25, 20, 255});
+        renderer.drawRect(renderX + 29, renderY + 18 + bob, 3, 3, SDL_Color{40, 25, 20, 255});
     }
 
     // Shirt (warm red flannel)
-    renderer.drawRect(px + 8, py + 16 + bob, 16, 5, SDL_Color{195, 60, 50, 255});
+    renderer.drawRect(renderX + 12, renderY + 24 + bob, 24, 8, SDL_Color{195, 60, 50, 255});
 
     // Overalls (blue denim)
-    renderer.drawRect(px + 9, py + 20 + bob, 14, 5, SDL_Color{55, 95, 175, 255});
+    renderer.drawRect(renderX + 14, renderY + 30 + bob, 20, 8, SDL_Color{55, 95, 175, 255});
 
     // Boots / Feet with walk cycle step displacement
     const SDL_Color bootColor{75, 45, 25, 255};
     if (m_animStep == 1) {
-        // Left foot stepped forward, right foot back
-        renderer.drawRect(px + 9, py + 24, 5, 6, bootColor);
-        renderer.drawRect(px + 18, py + 26, 5, 4, bootColor);
+        renderer.drawRect(renderX + 14, renderY + 36, 8, 9, bootColor);
+        renderer.drawRect(renderX + 26, renderY + 39, 8, 6, bootColor);
     } else if (m_animStep == 3) {
-        // Right foot stepped forward, left foot back
-        renderer.drawRect(px + 9, py + 26, 5, 4, bootColor);
-        renderer.drawRect(px + 18, py + 24, 5, 6, bootColor);
+        renderer.drawRect(renderX + 14, renderY + 39, 8, 6, bootColor);
+        renderer.drawRect(renderX + 26, renderY + 36, 8, 9, bootColor);
     } else {
-        // Neutral stance
-        renderer.drawRect(px + 9, py + 25, 5, 5, bootColor);
-        renderer.drawRect(px + 18, py + 25, 5, 5, bootColor);
+        renderer.drawRect(renderX + 14, renderY + 38, 8, 7, bootColor);
+        renderer.drawRect(renderX + 26, renderY + 38, 8, 7, bootColor);
     }
 
-    // Small black border outline around the character for crisp pixel art presence
-    renderer.drawOutline(px + 5, py + 2 + bob, 22, 29, SDL_Color{30, 20, 15, 120});
+    renderer.drawOutline(renderX + 8, renderY + 3 + bob, 32, 42, SDL_Color{30, 20, 15, 110});
 }

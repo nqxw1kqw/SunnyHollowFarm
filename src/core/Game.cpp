@@ -2235,6 +2235,12 @@ void Game::render() {
                 int promptH = 22;
                 int promptX = targetTx * Map::TILE_SIZE + (Map::TILE_SIZE - promptW) / 2;
                 int promptY = targetTy * Map::TILE_SIZE - 24;
+                if ((targetTx == m_sellerNPC.getTileX() && targetTy == m_sellerNPC.getTileY()) ||
+                    (targetTx == m_buyerNPC.getTileX() && targetTy == m_buyerNPC.getTileY())) {
+                    promptY = targetTy * Map::TILE_SIZE - 34;
+                } else if (targetTx >= 13 && targetTx <= 18 && targetTy == 1) {
+                    promptY = targetTy * Map::TILE_SIZE - 28;
+                }
                 if (promptY < 4) promptY = targetTy * Map::TILE_SIZE + Map::TILE_SIZE + 4;
 
                 bool hasDialogue = m_renderer.drawDialogue(promptX, promptY, promptW, promptH, true);

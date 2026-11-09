@@ -1,5 +1,6 @@
 #include <cmath>
 #include "world/Map.h"
+#include "ui/BitmapFont.h"
 #include <algorithm>
 
 Map::Map() {
@@ -342,57 +343,146 @@ void Map::render(Renderer& renderer) const {
                 }
 
                 if (tile.getType() == TileType::Farmhouse || tile.getType() == TileType::FarmhouseDoor) {
-                    const SDL_Rect houseSrc{(tx - 1) * 32, (ty - 1) * 32, 32, 32};
-                    if (!renderer.drawSprite("building_farmhouse.png", px, py, 32, 32, &houseSrc)) {
-                        if (ty == 1) {
-                            renderer.drawRect(px, py + 4, TILE_SIZE, TILE_SIZE - 4, SDL_Color{175, 55, 45, 255});
-                            renderer.drawRect(px, py + 4, TILE_SIZE, 4, SDL_Color{205, 75, 60, 255});
-                            renderer.drawOutline(px, py + 4, TILE_SIZE, TILE_SIZE - 4, SDL_Color{120, 35, 30, 255});
-                            if (tx == 3) {
-                                renderer.drawRect(px + 18, py, 8, 12, SDL_Color{150, 60, 45, 255});
-                                renderer.drawRect(px + 16, py - 2, 12, 3, SDL_Color{90, 35, 25, 255});
-                            }
-                        } else {
-                            renderer.drawRect(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{165, 110, 60, 255});
-                            renderer.drawOutline(px, py, TILE_SIZE, TILE_SIZE, SDL_Color{110, 65, 35, 255});
-                            renderer.drawLine(px, py + 10, px + TILE_SIZE, py + 10, SDL_Color{125, 75, 40, 255});
-                            renderer.drawLine(px, py + 20, px + TILE_SIZE, py + 20, SDL_Color{125, 75, 40, 255});
-                            if (tx == 2) {
-                                renderer.drawRect(px + 8, py + 6, 16, 26, SDL_Color{95, 50, 25, 255});
-                                renderer.drawOutline(px + 8, py + 6, 16, 26, SDL_Color{65, 30, 15, 255});
-                                renderer.drawRect(px + 20, py + 18, 3, 3, SDL_Color{245, 210, 50, 255});
-                            } else {
-                                renderer.drawRect(px + 7, py + 7, 18, 16, SDL_Color{255, 225, 120, 255});
-                                renderer.drawOutline(px + 7, py + 7, 18, 16, SDL_Color{85, 45, 20, 255});
-                                renderer.drawLine(px + 16, py + 7, px + 16, py + 23, SDL_Color{85, 45, 20, 255});
-                                renderer.drawLine(px + 7, py + 15, px + 25, py + 15, SDL_Color{85, 45, 20, 255});
-                            }
+                    if (tx == 1 && ty == 1) {
+                        // Render unified scaled Farmhouse (breaking out of 1-block grid constraint)
+                        const int houseX = 16;
+                        const int houseW = 120;
+                        const int houseH = 84;
+                        const int houseY = (2 * TILE_SIZE + TILE_SIZE) - houseH; // 96 - 84 = 12
+
+                        // Soft ground drop shadow along building foundation
+                        renderer.drawRect(houseX + 4, 93, houseW - 8, 5, SDL_Color{20, 20, 20, 75});
+
+                        if (!renderer.drawSprite("building_farmhouse.png", houseX, houseY, houseW, houseH)) {
+                            // High-quality procedural fallback for scaled farmhouse
+                            // Roof
+                            renderer.drawRect(houseX, houseY, houseW, 40, SDL_Color{175, 55, 45, 255});
+                            renderer.drawRect(houseX, houseY + 36, houseW, 6, SDL_Color{205, 75, 60, 255});
+                            renderer.drawOutline(houseX, houseY, houseW, 42, SDL_Color{120, 35, 30, 255});
+                            // Wooden plank walls
+                            renderer.drawRect(houseX + 4, houseY + 42, houseW - 8, 42, SDL_Color{165, 110, 60, 255});
+                            renderer.drawOutline(houseX + 4, houseY + 42, houseW - 8, 42, SDL_Color{110, 65, 35, 255});
+                            // Left window
+                            renderer.drawRect(houseX + 16, houseY + 50, 24, 18, SDL_Color{255, 225, 120, 255});
+                            renderer.drawOutline(houseX + 16, houseY + 50, 24, 18, SDL_Color{85, 45, 20, 255});
+                            renderer.drawLine(houseX + 28, houseY + 50, houseX + 28, houseY + 68, SDL_Color{85, 45, 20, 255});
+                            renderer.drawLine(houseX + 16, houseY + 59, houseX + 40, houseY + 59, SDL_Color{85, 45, 20, 255});
+                            // Right window
+                            renderer.drawRect(houseX + houseW - 40, houseY + 50, 24, 18, SDL_Color{255, 225, 120, 255});
+                            renderer.drawOutline(houseX + houseW - 40, houseY + 50, 24, 18, SDL_Color{85, 45, 20, 255});
+                            renderer.drawLine(houseX + houseW - 28, houseY + 50, houseX + houseW - 28, houseY + 68, SDL_Color{85, 45, 20, 255});
+                            renderer.drawLine(houseX + houseW - 40, houseY + 59, houseX + houseW - 16, houseY + 59, SDL_Color{85, 45, 20, 255});
+                            // Entrance Door
+                            renderer.drawRect(houseX + (houseW - 22) / 2, houseY + 48, 22, 36, SDL_Color{95, 50, 25, 255});
+                            renderer.drawOutline(houseX + (houseW - 22) / 2, houseY + 48, 22, 36, SDL_Color{65, 30, 15, 255});
+                            renderer.drawRect(houseX + (houseW - 22) / 2 + 16, houseY + 66, 3, 3, SDL_Color{245, 210, 50, 255});
                         }
+
+                        // Architectural details:
+                        // 1. Stone chimney with cozy rising smoke puffs
+                        const int chimneyX = houseX + houseW - 24;
+                        const int chimneyY = houseY + 2;
+                        renderer.drawRect(chimneyX, chimneyY, 14, 18, SDL_Color{145, 65, 48, 255});
+                        renderer.drawRect(chimneyX - 2, chimneyY - 3, 18, 4, SDL_Color{95, 40, 28, 255});
+                        renderer.drawOutline(chimneyX, chimneyY, 14, 18, SDL_Color{75, 30, 20, 255});
+
+                        float smokePhase = std::fmod(m_waterAnimTimer * 1.5f, 1.2f);
+                        int smokeY1 = static_cast<int>(chimneyY - 5 - smokePhase * 18.0f);
+                        int smokeX1 = static_cast<int>(chimneyX + 5 + std::sin(smokePhase * 3.14159f) * 4.0f);
+                        Uint8 alpha1 = static_cast<Uint8>(std::clamp(170.0f * (1.0f - smokePhase / 1.2f), 0.0f, 255.0f));
+                        renderer.drawRect(smokeX1, smokeY1, 6, 5, SDL_Color{230, 230, 235, alpha1});
+
+                        float smokePhase2 = std::fmod(smokePhase + 0.6f, 1.2f);
+                        int smokeY2 = static_cast<int>(chimneyY - 5 - smokePhase2 * 18.0f);
+                        int smokeX2 = static_cast<int>(chimneyX + 6 + std::sin(smokePhase2 * 3.14159f + 1.0f) * 5.0f);
+                        Uint8 alpha2 = static_cast<Uint8>(std::clamp(150.0f * (1.0f - smokePhase2 / 1.2f), 0.0f, 255.0f));
+                        renderer.drawRect(smokeX2, smokeY2, 8, 6, SDL_Color{240, 240, 245, alpha2});
+
+                        // 2. Porch stone threshold leading cleanly to path at (2, 3)
+                        renderer.drawRect(68, 93, 24, 3, SDL_Color{175, 160, 145, 255});
+                        renderer.drawRect(70, 91, 20, 2, SDL_Color{140, 85, 45, 255});
+
+                        // 3. Flower planter box under the front window
+                        renderer.drawRect(houseX + 16, 78, 24, 4, SDL_Color{115, 65, 30, 255});
+                        renderer.drawRect(houseX + 18, 76, 4, 3, SDL_Color{235, 60, 50, 255});
+                        renderer.drawRect(houseX + 24, 75, 4, 4, SDL_Color{250, 215, 60, 255});
+                        renderer.drawRect(houseX + 30, 76, 4, 3, SDL_Color{235, 60, 50, 255});
+                        renderer.drawRect(houseX + 20, 78, 16, 2, SDL_Color{65, 140, 45, 255});
                     }
                     continue;
                 }
 
                 if (tile.getType() == TileType::ShopStall) {
-                    const SDL_Rect stallSrc{((tx - 13) % 3) * 32, 0, 32, 64};
-                    if (!renderer.drawSprite("building_shop_stall.png", px, py - 32, 32, 64, &stallSrc)) {
-                        renderer.drawRect(px + 2, py + 18, 28, 12, SDL_Color{145, 95, 50, 255});
-                        renderer.drawOutline(px + 2, py + 18, 28, 12, SDL_Color{105, 65, 30, 255});
-                        renderer.drawRect(px + 4, py + 10, 4, 18, SDL_Color{120, 75, 35, 255});
-                        renderer.drawRect(px + 24, py + 10, 4, 18, SDL_Color{120, 75, 35, 255});
+                    if (tx == 13 && ty == 1) {
+                        // Render unified Bram's Seed Shop Market Pavilion
+                        const int stallX = 13 * TILE_SIZE - 2;
+                        const int stallW = 100;
+                        const int stallH = 78;
+                        const int stallY = 64 - stallH; // -14
 
-                        bool isSeller = (tx <= 15);
-                        SDL_Color primaryColor = isSeller ? SDL_Color{215, 45, 40, 255} : SDL_Color{45, 115, 200, 255};
-                        SDL_Color stripeColor = isSeller ? SDL_Color{245, 240, 230, 255} : SDL_Color{250, 215, 65, 255};
+                        renderer.drawRect(stallX + 2, 61, stallW - 4, 5, SDL_Color{20, 20, 20, 80});
 
-                        renderer.drawRect(px, py + 2, TILE_SIZE, 12, primaryColor);
-                        renderer.drawRect(px + 6, py + 2, 6, 12, stripeColor);
-                        renderer.drawRect(px + 20, py + 2, 6, 12, stripeColor);
-                        renderer.drawOutline(px, py + 2, TILE_SIZE, 12, SDL_Color{70, 50, 40, 255});
-
-                        for (int f = 0; f < 4; ++f) {
-                            SDL_Color fringeCol = (f % 2 == 0) ? primaryColor : stripeColor;
-                            renderer.drawRect(px + f * 8, py + 14, 8, 3, fringeCol);
+                        if (!renderer.drawSprite("building_shop_stall.png", stallX, stallY, stallW, stallH)) {
+                            // Fallback
+                            renderer.drawRect(stallX + 4, 48, stallW - 8, 16, SDL_Color{145, 95, 50, 255});
+                            renderer.drawOutline(stallX + 4, 48, stallW - 8, 16, SDL_Color{105, 65, 30, 255});
+                            renderer.drawRect(stallX, stallY + 20, stallW, 20, SDL_Color{215, 45, 40, 255});
+                            for (int i = 0; i < 4; ++i) {
+                                renderer.drawRect(stallX + 12 + i * 22, stallY + 20, 10, 20, SDL_Color{245, 240, 230, 255});
+                            }
                         }
+
+                        // Hanging carved wooden signboard: "SEEDS"
+                        renderer.drawRect(stallX + 24, stallY + 40, 52, 13, SDL_Color{115, 70, 35, 255});
+                        renderer.drawOutline(stallX + 24, stallY + 40, 52, 13, SDL_Color{75, 40, 18, 255});
+                        renderer.drawLine(stallX + 30, stallY + 34, stallX + 30, stallY + 40, SDL_Color{60, 60, 65, 255});
+                        renderer.drawLine(stallX + 70, stallY + 34, stallX + 70, stallY + 40, SDL_Color{60, 60, 65, 255});
+                        BitmapFont::drawText(renderer, "SEEDS", stallX + 33, stallY + 43, SDL_Color{255, 230, 130, 255}, 1);
+                        renderer.drawRect(stallX + 26, stallY + 44, 4, 5, SDL_Color{90, 180, 50, 255});
+
+                        // Burlap seed sacks on corner of counter
+                        renderer.drawRect(stallX + 4, 49, 13, 14, SDL_Color{210, 185, 140, 255});
+                        renderer.drawOutline(stallX + 4, 49, 13, 14, SDL_Color{150, 120, 80, 255});
+                        renderer.drawRect(stallX + 7, 47, 7, 3, SDL_Color{160, 130, 90, 255});
+                    } else if (tx == 16 && ty == 1) {
+                        // Render unified Silas's Produce Exchange Market Pavilion
+                        const int stallX = 16 * TILE_SIZE - 2;
+                        const int stallW = 100;
+                        const int stallH = 78;
+                        const int stallY = 64 - stallH; // -14
+
+                        renderer.drawRect(stallX + 2, 61, stallW - 4, 5, SDL_Color{20, 20, 20, 80});
+
+                        if (!renderer.drawSprite("building_shop_stall.png", stallX, stallY, stallW, stallH)) {
+                            // Fallback
+                            renderer.drawRect(stallX + 4, 48, stallW - 8, 16, SDL_Color{145, 95, 50, 255});
+                            renderer.drawOutline(stallX + 4, 48, stallW - 8, 16, SDL_Color{105, 65, 30, 255});
+                            renderer.drawRect(stallX, stallY + 20, stallW, 20, SDL_Color{45, 115, 200, 255});
+                            for (int i = 0; i < 4; ++i) {
+                                renderer.drawRect(stallX + 12 + i * 22, stallY + 20, 10, 20, SDL_Color{250, 215, 65, 255});
+                            }
+                        }
+
+                        // Silas's distinctive Blue & Gold canopy trim
+                        renderer.drawRect(stallX, stallY + 20, stallW, 14, SDL_Color{40, 100, 185, 255});
+                        for (int i = 0; i < 4; ++i) {
+                            renderer.drawRect(stallX + 10 + i * 23, stallY + 20, 11, 14, SDL_Color{250, 215, 65, 255});
+                        }
+                        renderer.drawOutline(stallX, stallY + 20, stallW, 14, SDL_Color{25, 65, 120, 255});
+
+                        // Hanging carved wooden signboard: "BUYER"
+                        renderer.drawRect(stallX + 22, stallY + 40, 56, 13, SDL_Color{115, 70, 35, 255});
+                        renderer.drawOutline(stallX + 22, stallY + 40, 56, 13, SDL_Color{75, 40, 18, 255});
+                        renderer.drawLine(stallX + 28, stallY + 34, stallX + 28, stallY + 40, SDL_Color{60, 60, 65, 255});
+                        renderer.drawLine(stallX + 72, stallY + 34, stallX + 72, stallY + 40, SDL_Color{60, 60, 65, 255});
+                        BitmapFont::drawText(renderer, "BUYER", stallX + 33, stallY + 43, SDL_Color{255, 230, 130, 255}, 1);
+                        renderer.drawRect(stallX + 24, stallY + 44, 5, 5, SDL_Color{250, 215, 50, 255});
+
+                        // Wooden produce crates with tomatoes and carrots
+                        renderer.drawRect(stallX + 82, 49, 14, 14, SDL_Color{140, 95, 50, 255});
+                        renderer.drawOutline(stallX + 82, 49, 14, 14, SDL_Color{95, 60, 30, 255});
+                        renderer.drawRect(stallX + 84, 47, 4, 4, SDL_Color{230, 50, 40, 255});
+                        renderer.drawRect(stallX + 90, 47, 4, 4, SDL_Color{245, 140, 30, 255});
                     }
                     continue;
                 }
